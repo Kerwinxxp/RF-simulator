@@ -25,7 +25,3 @@ This repository currently includes selected simulation resources, such as:
 - Region/map files (`.osm`)
 - Signal and trajectory data files (`.csv`, `.mat`)
 - Project documentation (`.pdf`, `.docx`)
-
-## Web UI Reference
-The GitHub introduction content is synchronized with the web presentation located at:
-- `C:\Users\phdwf\coverage-simulator-web\index.html`
