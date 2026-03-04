@@ -33,10 +33,9 @@ This repository currently includes selected simulation resources, such as:
 
 ## Run
 ### Signal map generation
-Run the script:
-- `test_script.m`
-
-This file contains a complete example for generating a signal map over one region.
+Use the `static transimiter simulation` folder for single-region signal-map generation:
+- `static transimiter simulation/static_trans.m`: Main script for static-transmitter signal-map simulation.
+- `static transimiter simulation/target_region_1.xlsx`: Example target-region input used by the script.
 
 ### Fixed-orientation trajectory example
 Use the following scripts for trajectory simulation with fixed orientation angles:
