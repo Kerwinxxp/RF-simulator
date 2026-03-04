@@ -32,7 +32,13 @@ This repository currently includes selected simulation resources, such as:
 3. Ensure required toolboxes for RF/ray-tracing workflows are available in your MATLAB installation.
 
 ## Run
-For signal map generation, run the script:
+### Signal map generation
+Run the script:
 - `test_script.m`
 
 This file contains a complete example for generating a signal map over one region.
+
+### Fixed-orientation trajectory example
+Use the following scripts for trajectory simulation with fixed orientation angles:
+- `fix_angle_trajectory.m`: Generates trajectories and writes `trajectory_*_targetAndAngles.csv` files (target point + per-node orientation angles).
+- `generate_fix_angle.m`: Loads generated trajectories and target-angle files, applies fixed antenna orientation along the trajectory, and exports per-step signal maps.
