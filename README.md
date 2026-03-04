@@ -1,49 +1,251 @@
-﻿# Wireless Coverage Simulator
 
-A MATLAB-based ray-tracing toolkit for wireless coverage prediction, trajectory simulation, and dataset generation.
+---
 
-## Project Overview
-This project provides an end-to-end workflow for RF propagation analysis, from map/scene setup to signal-map export. It is designed for simulation-driven experiments on transmitter-receiver deployment, coverage quality, and trajectory-based signal behavior.
+# 📡 Wireless Coverage Simulator
 
-## Core Capabilities
-- Scene & Map View: Unified basemap canvas with target-region framing and 3D context.
-- Directional Pattern Control: Visualize and adjust antenna tilt, orientation, and directivity.
-- Tx/Rx Site Visualization: Display transmitter sites, receiver sites, and propagation views.
-- Path & Motion Simulation: Generate synthetic trajectories for mobility experiments.
-- Ray-Tracing Coverage Maps: Produce high-resolution heatmaps for custom regions.
-- Trajectory Simulation Preview: Animated simulation for path-based scenarios.
+A **MATLAB-based ray-tracing toolkit** for wireless coverage prediction, trajectory simulation, and dataset generation.
 
-## Workflow
-1. Define Region: Set NW/NE/SW bounds, basemap, and initialize scene.
-2. Deploy Sites: Add Tx/Rx manually, via file upload, or randomized/grid placement.
-3. Simulate: Run directivity, heatmap, trajectory, and signal-along-path simulations.
-4. Export: Save site files, trajectory files, and region-level signal-map datasets.
+This project provides an **end-to-end RF propagation simulation workflow**, enabling experiments on transmitter–receiver deployment, coverage quality evaluation, and trajectory-based signal analysis.
 
-## Included Assets in This Repository
-This repository currently includes selected simulation resources, such as:
-- MATLAB scripts (`.m`) and app file (`.mlapp`)
-- Region/map files (`.osm`)
-- Signal and trajectory data files (`.csv`, `.mat`)
-- Project documentation (`.pdf`, `.docx`)
+---
 
-## Installation
-1. Install MATLAB 2025 (or MATLAB R2025 release).
-2. Open this project folder in MATLAB.
-3. Ensure required toolboxes for RF/ray-tracing workflows are available in your MATLAB installation.
+# 📖 Project Overview
 
-## Run
-### Signal map generation
-Use the `static transimiter simulation` folder for single-region signal-map generation:
-- `static transimiter simulation/static_trans.m`: Main script for static-transmitter signal-map simulation.
-- `static transimiter simulation/target_region_1.xlsx`: Example target-region input used by the script.
+The simulator supports **full-scene wireless propagation analysis**, from geographic map initialization to signal heatmap export.
 
-### Fixed-orientation trajectory example
-Use the following scripts for trajectory simulation with fixed orientation angles:
-- `fix angle simulation/fix_angle_trajectory.m`: Generates trajectories and writes `trajectory_*_targetAndAngles.csv` files (target point + per-node orientation angles).
-- `fix angle simulation/generate_fix_angle.m`: Loads generated trajectories and target-angle files, applies fixed antenna orientation along the trajectory, and exports per-step signal maps.
+It is designed for:
 
-### Trajectory signal-map generation
-Use the `generateTrajectoryMaps` folder for trajectory-based signal-map generation:
-- `generateTrajectoryMaps/generateTrajectoryMaps.m`: Main entry for generating trajectory signal maps.
-- `generateTrajectoryMaps/trajectorySignalStrengthScript.m`: Computes and exports signal-strength maps along trajectories.
-- `generateTrajectoryMaps/region_matches_trajectory_test.m`: Utility script for region/trajectory matching checks.
+* RF propagation experiments
+* Coverage planning and analysis
+* Mobility-based signal simulations
+* Dataset generation for wireless research and machine learning
+
+The framework integrates **map visualization, antenna modeling, trajectory simulation, and ray-tracing coverage computation** into a single MATLAB workflow.
+
+---
+
+# ⚙️ Core Capabilities
+
+### 🗺 Scene & Map Visualization
+
+* Unified basemap canvas
+* Target region framing
+* 3D environment context
+
+### 📡 Directional Antenna Control
+
+* Antenna tilt adjustment
+* Orientation visualization
+* Directional pattern control
+
+### 📍 Tx/Rx Site Deployment
+
+* Visual display of transmitter and receiver sites
+* Multiple deployment options (manual, file import, grid/random)
+
+### 🚶 Trajectory & Mobility Simulation
+
+* Synthetic trajectory generation
+* Mobility experiment support
+* Animated trajectory preview
+
+### 🌡 Ray-Tracing Coverage Maps
+
+* High-resolution signal strength heatmaps
+* Custom target-region coverage computation
+
+### 🎬 Trajectory Signal Simulation
+
+* Signal strength evaluation along movement paths
+* Step-by-step trajectory signal-map generation
+
+---
+
+# 🔄 Simulation Workflow
+
+The typical simulation process consists of four main stages:
+
+### 1️⃣ Define Region
+
+* Set **NW / NE / SW boundaries**
+* Load basemap (`.osm`)
+* Initialize the simulation scene
+
+### 2️⃣ Deploy Sites
+
+Add transmitter/receiver locations using:
+
+* Manual placement
+* File import
+* Random or grid-based deployment
+
+### 3️⃣ Run Simulations
+
+Execute simulation modules including:
+
+* Antenna directivity visualization
+* Coverage heatmap generation
+* Trajectory simulation
+* Signal analysis along paths
+
+### 4️⃣ Export Results
+
+Export simulation outputs such as:
+
+* Site configuration files
+* Trajectory datasets
+* Region-level signal maps
+
+---
+
+# 📂 Repository Structure
+
+The repository contains selected resources for wireless simulation experiments.
+
+```
+project/
+│
+├── static transmitter simulation/
+│   ├── static_trans.m
+│   └── target_region_1.xlsx
+│
+├── fix angle simulation/
+│   ├── fix_angle_trajectory.m
+│   └── generate_fix_angle.m
+│
+├── generateTrajectoryMaps/
+│   ├── generateTrajectoryMaps.m
+│   ├── trajectorySignalStrengthScript.m
+│   └── region_matches_trajectory_test.m
+│
+├── data/
+│   ├── region maps (.osm)
+│   ├── trajectory files (.csv)
+│   └── signal datasets (.mat)
+│
+└── documentation/
+    ├── project documentation (.pdf)
+    └── additional notes (.docx)
+```
+
+Included asset types:
+
+* MATLAB scripts (`.m`)
+* MATLAB App Designer file (`.mlapp`)
+* Map files (`.osm`)
+* Signal / trajectory data (`.csv`, `.mat`)
+* Documentation (`.pdf`, `.docx`)
+
+---
+
+# 🧩 Installation
+
+### Requirements
+
+* **MATLAB R2025** (or MATLAB 2025 release)
+* Required MATLAB **RF / ray-tracing related toolboxes**
+
+### Setup
+
+1. Install MATLAB.
+2. Clone or download this repository.
+3. Open the project folder in MATLAB.
+4. Ensure required toolboxes are installed and enabled.
+
+---
+
+# 🚀 Running Simulations
+
+## 1️⃣ Signal Map Generation (Static Transmitter)
+
+Use the folder:
+
+```
+static transmitter simulation/
+```
+
+Main files:
+
+* `static_trans.m`
+  Main script for **static-transmitter signal-map simulation**
+
+* `target_region_1.xlsx`
+  Example **target-region configuration input**
+
+---
+
+## 2️⃣ Fixed-Orientation Trajectory Simulation
+
+Use the folder:
+
+```
+fix angle simulation/
+```
+
+Scripts:
+
+### `fix_angle_trajectory.m`
+
+* Generates movement trajectories
+* Exports files:
+
+```
+trajectory_*_targetAndAngles.csv
+```
+
+Each file contains:
+
+* Target points
+* Per-node antenna orientation angles
+
+---
+
+### `generate_fix_angle.m`
+
+* Loads generated trajectories
+* Applies **fixed antenna orientation along trajectories**
+* Generates **per-step signal maps**
+
+---
+
+## 3️⃣ Trajectory Signal-Map Generation
+
+Use the folder:
+
+```
+generateTrajectoryMaps/
+```
+
+Main components:
+
+### `generateTrajectoryMaps.m`
+
+Main entry script for **trajectory signal-map generation**
+
+### `trajectorySignalStrengthScript.m`
+
+Computes and exports **signal strength maps along trajectories**
+
+### `region_matches_trajectory_test.m`
+
+Utility script for **region–trajectory matching verification**
+
+---
+
+# 📊 Outputs
+
+The simulator produces multiple types of datasets:
+
+* 📡 **Coverage Heatmaps**
+* 🗺 **Region-Level Signal Maps**
+* 🚶 **Trajectory-Based Signal Measurements**
+* 📁 **Exportable CSV/MAT datasets**
+
+These outputs can be used for:
+
+* Wireless coverage analysis
+* Mobility-based RF experiments
+* Machine learning dataset generation
+
+---
+
