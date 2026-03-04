@@ -1,17 +1,31 @@
-# Introduction
-Visualizing RF Signal Coverage makes analysis of radio frequency proagation and the creation of signal maps easier by combining tools to assess and display the signal strength in an area, coverage of a signal over an area, and a signals disperssion throghout a target region.
+﻿# Wireless Coverage Simulator
 
-## Overview of the application
-To empower academics, engineers, and anyone else interested in signal propagation analysis to get insights into signal intensity, coverage, and dispersion, Visualizing RF Signal Coverage provides an intuitive user interface and strong computing capabilities. The need to streamline the creation of heatmaps representing signal propagation in diverse contexts for further analysis was the main motivation for creating Visualizing RF Signal Coverage and we have created just that.
+A MATLAB-based ray-tracing toolkit for wireless coverage prediction, trajectory simulation, and dataset generation.
 
-## Purpose and Objectives
-The project aims to provide a robust and user-friendly MATLAB application for signal propagation analysis and the creation of signal maps. By providing an easy-to-use interface, comprising a number of practical functions, the program seeks to make the process of assessing signal strength, coverage regions, and signal dispersion across a given territory more straightforward.
+## Project Overview
+This project provides an end-to-end workflow for RF propagation analysis, from map/scene setup to signal-map export. It is designed for simulation-driven experiments on transmitter-receiver deployment, coverage quality, and trajectory-based signal behavior.
 
-## The main objectives are:
+## Core Capabilities
+- Scene & Map View: Unified basemap canvas with target-region framing and 3D context.
+- Directional Pattern Control: Visualize and adjust antenna tilt, orientation, and directivity.
+- Tx/Rx Site Visualization: Display transmitter sites, receiver sites, and propagation views.
+- Path & Motion Simulation: Generate synthetic trajectories for mobility experiments.
+- Ray-Tracing Coverage Maps: Produce high-resolution heatmaps for custom regions.
+- Trajectory Simulation Preview: Animated simulation for path-based scenarios.
 
-### Simplify Signal Propagation Analysis:
-- Offer consumers an easy-to-use, interactive platform to examine signal propagation in various environmental circumstances.
-- Give users the option to choose target areas and multiple models to simulate signal propagation.
-- Provide a visual representation of the inputs and results of the simulations that the user can interact with to gain additional insights.
-### Facilitate Transmitter and Receiver Placement:
--Allow users to manually configure transmitter and receiver locations in app or by uploading a
+## Workflow
+1. Define Region: Set NW/NE/SW bounds, basemap, and initialize scene.
+2. Deploy Sites: Add Tx/Rx manually, via file upload, or randomized/grid placement.
+3. Simulate: Run directivity, heatmap, trajectory, and signal-along-path simulations.
+4. Export: Save site files, trajectory files, and region-level signal-map datasets.
+
+## Included Assets in This Repository
+This repository currently includes selected simulation resources, such as:
+- MATLAB scripts (`.m`) and app file (`.mlapp`)
+- Region/map files (`.osm`)
+- Signal and trajectory data files (`.csv`, `.mat`)
+- Project documentation (`.pdf`, `.docx`)
+
+## Web UI Reference
+The GitHub introduction content is synchronized with the web presentation located at:
+- `C:\Users\phdwf\coverage-simulator-web\index.html`
