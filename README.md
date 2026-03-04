@@ -40,5 +40,5 @@ This file contains a complete example for generating a signal map over one regio
 
 ### Fixed-orientation trajectory example
 Use the following scripts for trajectory simulation with fixed orientation angles:
-- `fix_angle_trajectory.m`: Generates trajectories and writes `trajectory_*_targetAndAngles.csv` files (target point + per-node orientation angles).
-- `generate_fix_angle.m`: Loads generated trajectories and target-angle files, applies fixed antenna orientation along the trajectory, and exports per-step signal maps.
+- `fix angle simulation/fix_angle_trajectory.m`: Generates trajectories and writes `trajectory_*_targetAndAngles.csv` files (target point + per-node orientation angles).
+- `fix angle simulation/generate_fix_angle.m`: Loads generated trajectories and target-angle files, applies fixed antenna orientation along the trajectory, and exports per-step signal maps.
