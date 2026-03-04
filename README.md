@@ -25,3 +25,14 @@ This repository currently includes selected simulation resources, such as:
 - Region/map files (`.osm`)
 - Signal and trajectory data files (`.csv`, `.mat`)
 - Project documentation (`.pdf`, `.docx`)
+
+## Installation
+1. Install MATLAB 2025 (or MATLAB R2025 release).
+2. Open this project folder in MATLAB.
+3. Ensure required toolboxes for RF/ray-tracing workflows are available in your MATLAB installation.
+
+## Run
+For signal map generation, run the script:
+- `test_script.m`
+
+This file contains a complete example for generating a signal map over one region.
