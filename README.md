@@ -24,6 +24,12 @@ This project provides an end-to-end RF propagation workflow for transmitter-rece
 3. Ensure RF/ray-tracing related toolboxes are installed.
 
 ## Run
+For the latest version with all integrated UI features, run:
+- `app_codex.m`: Main MATLAB app entry point. Use this file if you want access to the full workflow, including coverage visualization, site management, trajectory generation, mobility analysis, and dataset generation.
+
+### Additional script-based examples
+The repository also includes standalone script flows for specific tasks.
+
 ### Signal map generation
 Use the `static transimiter simulation` folder for single-region signal-map generation:
 - `static transimiter simulation/static_trans.m`: Main script for static-transmitter signal-map simulation.
