@@ -582,7 +582,7 @@ classdef app < matlab.apps.AppBase
 
         function [x,y,utmzone] = deg2utm(app, Lat, Lon)
             % Convert lat/lon vectors into UTM coordinates (WGS84).
-            error(nargchk(2, 3, nargin));
+            narginchk(2, 3);
             n1=length(Lat);
             n2=length(Lon);
             if (n1~=n2)
@@ -650,7 +650,7 @@ classdef app < matlab.apps.AppBase
 
         function [Lat,Lon] = utm2deg(app, xx, yy, utmzone)
             % Convert UTM coordinate vectors into lat/lon vectors (WGS84).
-            error(nargchk(3, 4, nargin));
+            narginchk(3, 4);
             n1=length(xx);
             n2=length(yy);
             n3=size(utmzone,1);
@@ -669,7 +669,7 @@ classdef app < matlab.apps.AppBase
             hemis(utmzone(:,4)>'M') = 'N';
             x = xx(:);
             y = yy(:);
-            zone = str2num(utmzone(:,1:2));
+            zone = str2double(cellstr(utmzone(:,1:2)));
             sa = 6378137.000000 ; sb = 6356752.314245;
             e2 = ( ( ( sa .^ 2 ) - ( sb .^ 2 ) ) .^ 0.5 ) ./ sb;
             e2cuadrada = e2 .^ 2;
@@ -842,10 +842,10 @@ classdef app < matlab.apps.AppBase
             app.receiverLat = [];
             app.receiverLon = [];
             % Define the bounding box coordinates
-            ne_latitude = app.SouthWestLatitudeEditField.Value;
-            sw_longitude = app.NorthEastLongitudeEditField.Value;
-            nw_latitude = app.NorthEastLatitudeEditField.Value;
-            se_longitude = app.SouthWestLongitudeEditField.Value;
+            ne_latitude = app.NorthEastLatitudeEditField.Value;
+            sw_longitude = app.SouthWestLongitudeEditField.Value;
+            nw_latitude = app.SouthWestLatitudeEditField.Value;
+            se_longitude = app.NorthEastLongitudeEditField.Value;
 
             % Plot the bounding box
             delete(app.geoPlotAxes)
@@ -992,17 +992,17 @@ classdef app < matlab.apps.AppBase
             if(ntr == 1)
                 app.RandomSitesDropDown_2.Items = sites;
                 app.RandomSitesDropDown_2.ItemsData = 1:num_points;
-                app.RandomSitesDropDownLabel_2.Visible = "on";
-                app.RandomSitesDropDownLabel_2.Enable = "on";
+                app.RandomSitesDropDown_2Label.Visible = "on";
+                app.RandomSitesDropDown_2Label.Enable = "on";
                 app.RandomSitesDropDown_2.Visible = "on";
                 app.RandomSitesDropDown_2.Enable = "on";
 
-                app.RandomTransmiterSite1DropDownLabel_2.Visible = "off";
-                app.RandomTransmiterSite1DropDownLabel_2.Enable = "off";
+                app.RandomTransmiterSite1DropDown_2Label.Visible = "off";
+                app.RandomTransmiterSite1DropDown_2Label.Enable = "off";
                 app.RandomTransmiterSite1DropDown_2.Visible = "off";
                 app.RandomTransmiterSite1DropDown_2.Enable = "off";
-                app.RandomTransmiterSite2DropDownLabel_2.Visible = "off";
-                app.RandomTransmiterSite2DropDownLabel_2.Enable = "off";
+                app.RandomTransmiterSite2DropDown_2Label.Visible = "off";
+                app.RandomTransmiterSite2DropDown_2Label.Enable = "off";
                 app.RandomTransmiterSite2DropDown_2.Visible = "off";
                 app.RandomTransmiterSite2DropDown_2.Enable = "off";
 
@@ -1012,23 +1012,23 @@ classdef app < matlab.apps.AppBase
             elseif(ntr == 2)
                 app.RandomTransmiterSite1DropDown_2.Items = sites;
                 app.RandomTransmiterSite1DropDown_2.ItemsData = 1:num_points;
-                app.RandomTransmiterSite1DropDownLabel_2.Visible = "on";
-                app.RandomTransmiterSite1DropDownLabel_2.Enable = "on";
+                app.RandomTransmiterSite1DropDown_2Label.Visible = "on";
+                app.RandomTransmiterSite1DropDown_2Label.Enable = "on";
                 app.RandomTransmiterSite1DropDown_2.Visible = "on";
                 app.RandomTransmiterSite1DropDown_2.Enable = "on";
 
                 app.RandomTransmiterSite2DropDown_2.Items = sites;
                 app.RandomTransmiterSite2DropDown_2.ItemsData = 1:num_points;
-                app.RandomTransmiterSite2DropDownLabel_2.Visible = "on";
-                app.RandomTransmiterSite2DropDownLabel_2.Enable = "on";
+                app.RandomTransmiterSite2DropDown_2Label.Visible = "on";
+                app.RandomTransmiterSite2DropDown_2Label.Enable = "on";
                 app.RandomTransmiterSite2DropDown_2.Visible = "on";
                 app.RandomTransmiterSite2DropDown_2.Enable = "on";
 
                 app.VisualizeSiteCoverageAreaButton_2.Visible = "on";
                 app.VisualizeSiteCoverageAreaButton_2.Enable = "on";
 
-                app.RandomSitesDropDownLabel_2.Visible = "off";
-                app.RandomSitesDropDownLabel_2.Enable = "off";
+                app.RandomSitesDropDown_2Label.Visible = "off";
+                app.RandomSitesDropDown_2Label.Enable = "off";
                 app.RandomSitesDropDown_2.Visible = "off";
                 app.RandomSitesDropDown_2.Enable = "off";
             end
@@ -1168,7 +1168,7 @@ classdef app < matlab.apps.AppBase
 
                 configureSincURA(app, tx, [8 8], [10 10], 0);
 
-                pd = coverage256(tx,'PropagationModel','raytracing', 'MaxRange', app.diagonalDistance, 'Resolution', 1);
+                pd = coverage256timed(tx,'PropagationModel','raytracing', 'MaxRange', app.diagonalDistance, 'Resolution', 1);
                 pdTable = pd.Data;
 
                 filteredPdData = pdTable(pdTable.Latitude >= se_lat & pdTable.Latitude <= nw_lat & ...
@@ -1252,18 +1252,18 @@ classdef app < matlab.apps.AppBase
                 close(myFigure);
 
             elseif ntr == 2
-                siteNum1 = app.RandomTransmiterSite1DropDown.Value;
-                siteNum2 = app.RandomTransmiterSite2DropDown.Value;
+                siteNum1 = app.RandomTransmiterSite1DropDown_2.Value;
+                siteNum2 = app.RandomTransmiterSite2DropDown_2.Value;
                 viewer = siteviewer("Buildings","map.osm");
                 tx = txsite("Name",[string(siteNum1) string(siteNum2)], ...
                     "Latitude",[app.randLatitudes(siteNum1) app.randLatitudes(siteNum2)], ...
                     "Longitude",[app.randLongitudes(siteNum1) app.randLongitudes(siteNum2)], ...
                     "TransmitterFrequency", transmitterFreq, ...
-                    "TransmitterPower", app.TransmitterPowerdBmEditField.Value);
+                    "TransmitterPower", transPower);
 
                 configureSincURA(app, tx, [8 8], [10 10], 0);
 
-                pd = coverage256(tx,'PropagationModel','raytracing', 'MaxRange', app.diagonalDistance, 'Resolution', 1);
+                pd = coverage256timed(tx,'PropagationModel','raytracing', 'MaxRange', app.diagonalDistance, 'Resolution', 1);
                 pdTable = pd.Data;
 
                 filteredPdData = pdTable(pdTable.Latitude >= se_lat & pdTable.Latitude <= nw_lat & ...
@@ -1448,7 +1448,7 @@ classdef app < matlab.apps.AppBase
                     yagiAnt.TiltAxis = tiltAxis;
 
                     tx.Antenna = yagiAnt;
-                    pd = coverage(tx,'PropagationModel','raytracing',"SignalStrengths",-90,5:-60);
+                    pd = coverage(tx,'PropagationModel','raytracing',"SignalStrengths",-90:5:-60);
                     pd_table = pd.Data;
                     filename = strcat(string(i),".csv");
                     pod = string(app.PathofDirectoryEditField.Value);
@@ -1849,7 +1849,7 @@ classdef app < matlab.apps.AppBase
                     popup = uifigure('Position', [500 500 420 300], 'Name', "Advanced Longley-Rain Propagation Properties");
                     popup.Scrollable = 'on';
 
-                    label11 = uilabel(popup, 'Text', 'Antenna PolarizationFIXME:');
+                    label11 = uilabel(popup, 'Text', 'Antenna Polarization:');
                     label11.Position = [30 250 160 20];
                     editField11 = uieditfield(popup, 'numeric', "Value", 0);
                     editField11.Position = [170 250 40 20];
@@ -2117,7 +2117,7 @@ classdef app < matlab.apps.AppBase
                 app.propLongleySituationVariabilityTolerance = input6;
                 app.propagationModels{6} = propagationModel(...
                     "longley-rice",...
-                    "AntennaPolarization", "horizontal", ...
+                    "AntennaPolarization", input1, ...
                     "GroundConductivity", input2, ...
                     "GroundPermittivity", input3,...
                     "AtmosphericRefractivity", input4,...
