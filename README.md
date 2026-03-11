@@ -2,6 +2,8 @@
 
 A MATLAB-based RF propagation toolkit for wireless coverage prediction, trajectory simulation, and dataset generation — with a polished integrated GUI.
 
+**[Live Demo](https://kerwinxxp.github.io/coverage-simulator-web/)**
+
 ## Project Overview
 This project provides an end-to-end RF propagation workflow for transmitter-receiver deployment experiments, coverage analysis, and trajectory-based signal simulation. The main application (`app.m`) bundles all functionality into a single App Designer interface.
 
