@@ -8,6 +8,9 @@ A MATLAB-based RF propagation toolkit for wireless coverage prediction, trajecto
 This project provides an end-to-end RF propagation workflow for transmitter-receiver deployment experiments, coverage analysis, and trajectory-based signal simulation. The main application (`app.m`) bundles all functionality into a single App Designer interface.
 
 ## Core Capabilities
+
+![Core Capabilities](simulator.png)
+
 - **Scenario Setup**: Target region configuration with multiple propagation models (freespace, close-in, rain, gas, fog, longley-rice, raytracing)
 - **Tx/Rx Site Management**: Add transmitter and receiver sites with custom frequency, power, height, and antenna properties
 - **Coverage Visualization**: Plot coverage areas on interactive geographic maps with selectable base map styles
