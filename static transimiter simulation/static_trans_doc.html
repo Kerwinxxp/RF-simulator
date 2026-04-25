@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>static_trans - Generate per-transmitter signal-strength datasets</title>
+<style>
+  /* ==========================================================================
+     Design tokens — OpenAI / Claude Code inspired (compact, neutral, minimal)
+     ========================================================================== */
+  :root {
+    --accent:          #2E5BFF;
+    --accent-strong:   #1E3FB8;
+    --accent-soft:     #EDF1FF;
+    --accent-softer:   #F6F8FF;
+    --text:            #0D1117;
+    --text-muted:      #57606A;
+    --text-faint:      #8B95A1;
+    --bg:              #FFFFFF;
+    --bg-soft:         #FAFBFC;
+    --border:          #D0D7DE;
+    --border-soft:     #E5E8EC;
+    --border-faint:    #EFF1F4;
+    --code-bg:         #F6F8FA;
+    --code-text:       #1F2328;
+    --tip-bg:          #FFFBEB;
+    --tip-accent:      #C97C0C;
+    --note-bg:         #F1F5FF;
+    --note-accent:     #2E5BFF;
+
+    --radius-sm: 4px;
+    --radius-md: 6px;
+  }
+
+  /* ==========================================================================
+     Reset + base
+     ========================================================================== */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI",
+                 Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ==========================================================================
+     Topbar — minimal breadcrumbs
+     ========================================================================== */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    padding: 8px 24px;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    background: var(--bg);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .topbar .crumbs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .topbar .crumbs a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.1s;
+  }
+  .topbar .crumbs a:hover { color: var(--text); }
+  .topbar .crumbs .sep { color: var(--text-faint); font-size: 10px; }
+  .topbar .crumbs > span:last-child { color: var(--text); font-weight: 500; }
+
+  /* ==========================================================================
+     Layout
+     ========================================================================== */
+  .page {
+    display: flex;
+    max-width: 1400px;
+    margin: 0 auto;
+    gap: 0;
+  }
+
+  .sidebar {
+    width: 232px;
+    flex-shrink: 0;
+    padding: 20px 12px 28px 24px;
+    position: sticky;
+    top: 36px;
+    align-self: flex-start;
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+    font-size: 13px;
+    border-right: 1px solid var(--border-soft);
+  }
+  .sidebar::-webkit-scrollbar       { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar h3 {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 0 0 6px 8px;
+  }
+  .sidebar ul { list-style: none; padding: 0; margin: 0; }
+  .sidebar li { margin: 0; }
+  .sidebar a {
+    display: block;
+    padding: 3px 8px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    transition: color 0.1s, background 0.1s;
+    line-height: 1.5;
+  }
+  .sidebar a:hover { color: var(--text); background: var(--accent-softer); }
+  .sidebar > ul > li > a {
+    font-weight: 500;
+    color: var(--text);
+  }
+  .sidebar ul ul { margin: 0 0 4px 0; }
+  .sidebar ul ul a {
+    padding-left: 20px;
+    font-size: 12.5px;
+    font-weight: 400;
+  }
+
+  .content {
+    flex: 1;
+    padding: 24px 40px 80px 32px;
+    min-width: 0;
+    max-width: 820px;
+  }
+
+  /* ==========================================================================
+     Typography — compact dev-doc hierarchy
+     ========================================================================== */
+  h1 {
+    font-size: 26px;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.4px;
+    color: var(--text);
+    line-height: 1.25;
+  }
+  h1 code {
+    font-family: "SF Mono", "Menlo", Monaco, Consolas, monospace;
+    font-weight: 600;
+    font-size: 25px;
+    background: none;
+    padding: 0;
+    letter-spacing: -0.3px;
+  }
+  .tagline {
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 400;
+    margin: 0 0 6px 0;
+    line-height: 1.5;
+  }
+
+  h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 30px 0 8px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-soft);
+    color: var(--text);
+    letter-spacing: -0.2px;
+    scroll-margin-top: 52px;
+    position: relative;
+  }
+  h2:first-of-type { margin-top: 22px; }
+  h2::before {
+    content: "#";
+    position: absolute;
+    left: -18px;
+    top: 0;
+    color: var(--text-faint);
+    font-weight: 400;
+    opacity: 0;
+    transition: opacity 0.15s;
+    font-size: 16px;
+  }
+  h2:hover::before { opacity: 0.5; }
+
+  h3 {
+    font-size: 14.5px;
+    font-weight: 600;
+    margin: 18px 0 6px 0;
+    color: var(--text);
+    scroll-margin-top: 52px;
+  }
+
+  p { margin: 6px 0 8px 0; }
+
+  /* ==========================================================================
+     Inline code + code blocks — minimal, no left accent, subtle border
+     ========================================================================== */
+  code {
+    font-family: "SF Mono", "Menlo", Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 12.8px;
+    background: var(--code-bg);
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+    color: var(--code-text);
+    letter-spacing: -0.1px;
+  }
+
+  pre {
+    position: relative;
+    background: var(--code-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    overflow-x: auto;
+    font-family: "SF Mono", "Menlo", Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 12.8px;
+    line-height: 1.55;
+    margin: 8px 0 12px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: inherit;
+    color: var(--code-text);
+    letter-spacing: 0;
+  }
+  pre::before {
+    content: "matlab";
+    position: absolute;
+    top: 4px;
+    right: 10px;
+    font-size: 9.5px;
+    font-weight: 500;
+    color: var(--text-faint);
+    letter-spacing: 0.5px;
+    font-family: -apple-system, sans-serif;
+    pointer-events: none;
+    opacity: 0.55;
+  }
+  pre::-webkit-scrollbar       { height: 4px; }
+  pre::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  pre::-webkit-scrollbar-track { background: transparent; }
+
+  .matlab-comment { color: #5D6975; font-style: italic; }
+  .matlab-string  { color: #A8324A; }
+  .matlab-kw      { color: #1E40AF; font-weight: 500; }
+  .matlab-num     { color: #0A6E3D; }
+
+  /* ==========================================================================
+     Syntax list — minimal, no left accent
+     ========================================================================== */
+  .syntax-list {
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--code-bg);
+  }
+  .syntax-list div {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-soft);
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 12.8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .syntax-list div:last-child { border-bottom: none; }
+  .syntax-list div code {
+    background: none;
+    padding: 0;
+    color: var(--text);
+  }
+  .ex-link {
+    display: inline-block;
+    font-family: -apple-system, sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--accent);
+    text-decoration: none;
+    background: var(--accent-soft);
+    padding: 2px 8px;
+    border-radius: 3px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    transition: background 0.12s, color 0.12s;
+  }
+  .ex-link:hover {
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+  }
+
+  /* ==========================================================================
+     Examples panels — flat, no shadow, tight padding
+     ========================================================================== */
+  details.panel {
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    margin: 6px 0;
+    background: var(--bg);
+    transition: border-color 0.12s;
+  }
+  details.panel:hover { border-color: var(--border); }
+  details.panel[open] { border-color: var(--border); }
+  details.panel > summary {
+    cursor: pointer;
+    padding: 10px 14px 10px 12px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    user-select: none;
+    border-radius: var(--radius-md);
+    transition: background 0.1s;
+  }
+  details.panel > summary::-webkit-details-marker { display: none; }
+  details.panel > summary::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid var(--text-muted);
+    border-bottom: 1.5px solid var(--text-muted);
+    transform: rotate(-45deg);
+    margin-right: 11px;
+    margin-left: 2px;
+    transition: transform 0.18s, border-color 0.12s;
+    flex-shrink: 0;
+  }
+  details.panel[open] > summary::before {
+    transform: rotate(45deg);
+    margin-top: -3px;
+    border-color: var(--accent);
+  }
+  details.panel > summary:hover { background: var(--accent-softer); }
+  details.panel[open] > summary {
+    background: var(--bg-soft);
+    border-bottom: 1px solid var(--border-soft);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+  details.panel > .panel-body {
+    padding: 12px 18px 14px 32px;
+  }
+
+  /* ==========================================================================
+     Argument panels — flat list inside group card
+     ========================================================================== */
+  .arg-group {
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    margin: 8px 0 14px 0;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  details.arg {
+    border-top: 1px solid var(--border-faint);
+    margin: 0;
+    padding: 0;
+  }
+  details.arg:first-of-type { border-top: none; }
+  details.arg > summary {
+    padding: 9px 14px;
+    font-size: 13.5px;
+    cursor: pointer;
+    list-style: none;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    transition: background 0.1s;
+  }
+  details.arg > summary:hover { background: var(--accent-softer); }
+  details.arg[open] > summary {
+    background: var(--bg-soft);
+    border-bottom: 1px solid var(--border-faint);
+  }
+  details.arg > summary::-webkit-details-marker { display: none; }
+  details.arg > summary::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-right: 1.5px solid var(--text-faint);
+    border-bottom: 1.5px solid var(--text-faint);
+    transform: rotate(-45deg);
+    margin-right: 11px;
+    margin-left: 2px;
+    transition: transform 0.18s, border-color 0.12s;
+    flex-shrink: 0;
+  }
+  details.arg[open] > summary::before {
+    transform: rotate(45deg);
+    margin-top: -2px;
+    border-color: var(--accent);
+  }
+  details.arg > summary .arg-type {
+    color: var(--text-faint);
+    font-weight: 400;
+    font-size: 12.2px;
+    font-style: italic;
+    margin-left: 8px;
+  }
+  details.arg > .arg-body {
+    padding: 4px 16px 12px 30px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  /* ==========================================================================
+     Callouts — flat, no shadow, no emoji icons
+     ========================================================================== */
+  .tip, .note {
+    border-left: 3px solid;
+    padding: 8px 14px;
+    margin: 10px 0;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .tip  { background: var(--tip-bg);  border-color: var(--tip-accent); }
+  .note { background: var(--note-bg); border-color: var(--note-accent); }
+  .tip strong  { color: #92520C; font-weight: 600; margin-right: 3px; }
+  .note strong { color: var(--accent-strong); font-weight: 600; margin-right: 3px; }
+
+  /* ==========================================================================
+     See Also — small rectangular tags (not pills)
+     ========================================================================== */
+  .see-also {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    margin-top: 6px;
+  }
+  .see-also a {
+    text-decoration: none;
+    padding: 3px 9px;
+    background: var(--code-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    transition: background 0.1s, border-color 0.1s;
+  }
+  .see-also a code {
+    background: none;
+    padding: 0;
+    color: var(--text);
+    font-size: 12.5px;
+    letter-spacing: -0.1px;
+  }
+  .see-also a:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .see-also a:hover code { color: #fff; }
+
+  /* ==========================================================================
+     Generic links + external-link indicator
+     ========================================================================== */
+  a { color: var(--accent); text-decoration: none; transition: color 0.1s; }
+  a:hover { color: var(--accent-strong); text-decoration: underline; }
+
+  a[target="_blank"]::after {
+    content: "↗";
+    font-size: 9px;
+    margin-left: 2px;
+    vertical-align: baseline;
+    color: currentColor;
+    opacity: 0.4;
+  }
+  a[target="_blank"]:hover::after { opacity: 0.85; }
+
+  .see-also a[target="_blank"]::after,
+  .example-figure a[target="_blank"]::after,
+  .topbar a[target="_blank"]::after { display: none; }
+
+  /* ==========================================================================
+     Lists
+     ========================================================================== */
+  ul.compact { margin: 4px 0 8px 0; padding-left: 22px; }
+  ul.compact li { margin: 2px 0; }
+
+  /* ==========================================================================
+     Figures
+     ========================================================================== */
+  .figure-placeholder {
+    background: var(--bg-soft);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 12.5px;
+    margin: 10px 0;
+  }
+  .example-figure {
+    margin: 12px auto 6px auto;
+    padding: 0;
+    text-align: center;
+    max-width: 640px;
+  }
+  .example-figure img {
+    display: block;
+    max-width: 100%;
+    max-height: 420px;
+    width: auto;
+    height: auto;
+    margin: 0 auto;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    background: #fff;
+  }
+  .example-figure figcaption {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    text-align: left;
+    margin: 8px 4px 0 4px;
+    line-height: 1.55;
+  }
+  .example-figure figcaption code { font-size: 12px; }
+
+  /* ==========================================================================
+     Output lines (console transcripts)
+     ========================================================================== */
+  .output-line {
+    color: var(--text-muted);
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    padding: 1px 0 1px 14px;
+    margin: 0;
+    border-left: 2px solid var(--border-soft);
+    background: var(--bg-soft);
+    line-height: 1.55;
+  }
+  .output-line:first-of-type { padding-top: 8px; border-top-left-radius: var(--radius-sm); }
+  .output-line:last-of-type  { padding-bottom: 8px; border-bottom-left-radius: var(--radius-sm); }
+
+  /* ==========================================================================
+     Responsive
+     ========================================================================== */
+  @media (max-width: 1000px) {
+    .sidebar { display: none; }
+    .content { padding: 20px 24px 60px; max-width: 100%; }
+    h1 { font-size: 22px; }
+    h1 code { font-size: 21px; }
+    h2 { font-size: 16px; }
+    h2::before { display: none; }
+  }
+  @media (max-width: 640px) {
+    .topbar { padding: 8px 14px; }
+    .content { padding: 16px 14px 50px; }
+    pre { font-size: 12px; padding: 10px 12px; }
+    details.panel > .panel-body { padding: 10px 14px 12px 18px; }
+    details.arg > .arg-body     { padding: 4px 14px 12px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="crumbs">
+    <a href="#">RF-Propagation &amp; Trajectory Studio</a>
+    <span class="sep">›</span>
+    <a href="#">Reference</a>
+    <span class="sep">›</span>
+    <a href="#">Scripts</a>
+    <span class="sep">›</span>
+    <span>static_trans</span>
+  </div>
+</div>
+
+<div class="page">
+
+  <aside class="sidebar">
+    <h3>On this page</h3>
+    <ul>
+      <li><a href="#syntax">Syntax</a></li>
+      <li><a href="#description">Description</a></li>
+      <li><a href="#examples">Examples</a>
+        <ul>
+          <li><a href="#ex1">Run the Full Pipeline</a></li>
+          <li><a href="#ex2">Sanity-Check One Region</a></li>
+          <li><a href="#ex3">Change Transmitter Count</a></li>
+        </ul>
+      </li>
+      <li><a href="#algorithm">Algorithm</a>
+        <ul>
+          <li><a href="#stage1">Stage 1 - Setup &amp; Region Loop</a></li>
+          <li><a href="#stage2">Stage 2 - Geometry &amp; OSM Data</a></li>
+          <li><a href="#stage3">Stage 3 - Sample Receivers</a></li>
+          <li><a href="#stage4">Stage 4 - Place Transmitters</a></li>
+          <li><a href="#stage5">Stage 5 - Signal Strength</a></li>
+        </ul>
+      </li>
+      <li><a href="#input-files">Input Files</a></li>
+      <li><a href="#output-files">Output Files</a></li>
+      <li><a href="#dependencies">Dependencies</a></li>
+      <li><a href="#tips">Tips</a></li>
+      <li><a href="#see-also">See Also</a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+
+    <h1><code>static_trans</code></h1>
+    <p class="tagline">
+      Batch-generate per-transmitter signal-strength datasets for static RF simulation
+      over OpenStreetMap building geometry
+    </p>
+
+    <p>
+      The <code>static_trans</code> script generates 256&nbsp;m&thinsp;&times;&thinsp;256&nbsp;m
+      signal-strength maps for a list of geographic regions using MATLAB ray tracing. For each
+      region it samples a grid of non-building receiver positions, places a configurable number
+      of randomly located transmitters (each with an 8&times;8 directional URA at 28&nbsp;GHz),
+      computes the received signal strength at every receiver, and writes one Excel file per
+      transmitter.
+    </p>
+
+    <!-- ======================== SYNTAX ======================== -->
+    <h2 id="syntax">Syntax</h2>
+    <div class="syntax-list">
+      <div><code>static_trans</code></div>
+      <div><code>static_trans_doc</code> <a class="ex-link" href="#ex2">example</a></div>
+    </div>
+
+    <!-- ======================== DESCRIPTION ======================== -->
+    <h2 id="description">Description</h2>
+    <p>
+      <code>static_trans</code> reads NW-corner coordinates from <code>target_region_1.xlsx</code>,
+      downloads OpenStreetMap building data for each row, places 135 transmitters uniformly at
+      random over valid (non-building) grid cells, and writes a per-transmitter receiver-power
+      table (in dBm) to <code>dataset_&lt;env_num&gt;/&lt;t&gt;.xlsx</code> for t = 1&hellip;135.
+    </p>
+    <p>
+      <code>static_trans_doc</code> is a documented, section-by-section version of the same
+      pipeline with <em>demo tuning knobs</em> (<code>demoMaxRegions</code>,
+      <code>demoResolution</code>, <code>demoTotalMaps</code>) at the top of the Algorithm block
+      so it can be executed end-to-end in about a minute on a typical laptop.
+      <span class="ex-link"><a href="#ex2">See example</a></span>
+    </p>
+
+    <!-- ======================== EXAMPLES ======================== -->
+    <h2 id="examples">Examples</h2>
+
+    <!-- Example 1 -->
+    <details class="panel" id="ex1" open>
+      <summary>Run the Full Pipeline for Every Row in <code>target_region_1.xlsx</code></summary>
+      <div class="panel-body">
+        <p>
+          Reproduce the original <code>static_trans.m</code> behavior. Ensure the current folder
+          contains <code>target_region_1.xlsx</code> (a two-column table with headers
+          <code>NW_lat</code> and <code>NW_lon</code>) and the helper file
+          <code>coverage_test.m</code>.
+        </p>
+<pre><code><span class="matlab-kw">clear</span>; <span class="matlab-kw">clc</span>;
+env_base = <span class="matlab-num">1</span>;         <span class="matlab-comment">% ≥ 0. Machine offset for parallel runs.</span>
+static_trans</code></pre>
+        <p>On completion the script prints per-region and total elapsed time:</p>
+        <div class="output-line">Time for env 1: 412.8 seconds</div>
+        <div class="output-line">Time for env 2: 385.1 seconds</div>
+        <div class="output-line">...</div>
+        <div class="output-line">Total time: 4821.3 seconds</div>
+      </div>
+    </details>
+
+    <!-- Example 2 -->
+    <details class="panel" id="ex2" open>
+      <summary>Sanity-Check One Region Without Writing Files</summary>
+      <div class="panel-body">
+        <p>
+          Before launching a long batch job, verify the region bounds, the OSM download, and the
+          grid sampling on a single region. Parameters below are <em>reduced for demo speed</em>;
+          expected runtime is a few seconds.
+        </p>
+        <ul class="compact">
+          <li><code>d = 64 m</code> (region side) &mdash; production: <code>256</code></li>
+          <li><code>Resolution = 15 m</code> &mdash; production: <code>1</code></li>
+          <li><code>MaxNumReflections = 0</code> &mdash; production: <code>0</code> for Stage 3</li>
+        </ul>
+<pre><code>nw_lat = <span class="matlab-num">40.75</span>;
+nw_lon = <span class="matlab-num">-73.99</span>;
+
+<span class="matlab-comment">% Region bounding box (demo: 64 m, not 256 m)</span>
+R = <span class="matlab-num">6371</span> * <span class="matlab-num">1000</span>; d = <span class="matlab-num">64</span>;
+delta_lat = (d / R) * (<span class="matlab-num">180</span> / pi);
+delta_lon = (d / (R * cosd(nw_lat))) * (<span class="matlab-num">180</span> / pi);
+se_lat = nw_lat - delta_lat;
+se_lon = nw_lon + delta_lon;
+
+<span class="matlab-comment">% OSM download</span>
+west  = nw_lon - (se_lon - nw_lon);
+east  = nw_lon + (se_lon - nw_lon);
+south = nw_lat + (se_lat - nw_lat);
+north = nw_lat - (se_lat - nw_lat);
+osmAPI  = <span class="matlab-string">"https://api.openstreetmap.org/api/0.6/map?bbox="</span> + ...
+          num2str(west) + <span class="matlab-string">","</span> + num2str(south) + <span class="matlab-string">","</span> + ...
+          num2str(east) + <span class="matlab-string">","</span> + num2str(north);
+system(<span class="matlab-string">'curl "'</span> + osmAPI + <span class="matlab-string">'" > sanity.osm'</span>);
+
+<span class="matlab-comment">% Probe transmitter at region center</span>
+siteviewer(<span class="matlab-string">"Buildings"</span>, <span class="matlab-string">"sanity.osm"</span>, <span class="matlab-string">'Visible'</span>, <span class="matlab-string">'off'</span>);
+tx = txsite(<span class="matlab-string">'Latitude'</span>, (nw_lat+se_lat)/<span class="matlab-num">2</span>, ...
+            <span class="matlab-string">'Longitude'</span>, (nw_lon+se_lon)/<span class="matlab-num">2</span>, ...
+            <span class="matlab-string">'TransmitterFrequency'</span>, <span class="matlab-num">28e9</span>, ...
+            <span class="matlab-string">'TransmitterPower'</span>, <span class="matlab-num">1</span>, <span class="matlab-string">'AntennaHeight'</span>, <span class="matlab-num">2</span>);
+
+<span class="matlab-comment">% Discover valid grid points (demo: Resolution 15 m, not 1 m)</span>
+pm = propagationModel(<span class="matlab-string">"raytracing"</span>, <span class="matlab-string">"Method"</span>, <span class="matlab-string">"sbr"</span>, ...
+                       <span class="matlab-string">"MaxNumReflections"</span>, <span class="matlab-num">0</span>, <span class="matlab-string">"MaxNumDiffractions"</span>, <span class="matlab-num">0</span>);
+a = sin(deg2rad(se_lat-nw_lat)/<span class="matlab-num">2</span>)^<span class="matlab-num">2</span> + ...
+    cos(deg2rad(nw_lat))*cos(deg2rad(se_lat)) * ...
+    sin(deg2rad(se_lon-nw_lon)/<span class="matlab-num">2</span>)^<span class="matlab-num">2</span>;
+diagonalDistance = R * <span class="matlab-num">2</span> * atan2(sqrt(a), sqrt(<span class="matlab-num">1</span>-a));
+[~, ~, lats, lons] = coverage_test(tx, pm, ...
+                     <span class="matlab-string">'MaxRange'</span>, diagonalDistance, <span class="matlab-string">'Resolution'</span>, <span class="matlab-num">15</span>);
+inBox = lats &lt;= nw_lat &amp; lats &gt;= se_lat &amp; lons &gt;= nw_lon &amp; lons &lt;= se_lon;
+
+<span class="matlab-kw">figure</span>; geoscatter(lats(inBox), lons(inBox), <span class="matlab-num">12</span>, <span class="matlab-string">'filled'</span>);
+geobasemap streets;
+title(sprintf(<span class="matlab-string">'%d valid receiver points'</span>, nnz(inBox)));</code></pre>
+
+        <figure class="example-figure">
+          <img src="ex2_scatter.png" alt="Scatter plot of 7 valid receiver points overlaid on a streets basemap near Herald Square, Manhattan (40.75, -73.99).">
+          <figcaption>
+            Figure: 7 valid (non-building) receiver points returned by
+            <code>coverage_test</code> for a 64&thinsp;m&thinsp;&times;&thinsp;64&nbsp;m region at
+            (40.75&deg;N, -73.99&deg;W) with <code>Resolution = 15</code>. The blue dots fall in
+            open spaces between buildings (Pennsylvania Hotel, Kratter Building, Manhattan Mall)
+            along 34th Street near Herald Square. Increasing <code>Resolution</code> from
+            <code>15</code> to <code>1</code> would return several hundred points at the cost of
+            roughly 225&times; longer ray-tracing runtime.
+          </figcaption>
+        </figure>
+
+        <div class="tip">
+          <strong>Tip:</strong> increase <code>Resolution</code> (e.g., to <code>5</code>) for a denser point cloud;
+          lower to <code>1</code> for production quality but expect a &times;225 runtime increase.
+        </div>
+      </div>
+    </details>
+
+    <!-- Example 3 -->
+    <details class="panel" id="ex3" open>
+      <summary>Change the Number of Transmitters per Region</summary>
+      <div class="panel-body">
+        <p>
+          By default the script places 135 transmitters per region. Reduce this when debugging the
+          downstream signal-map training pipeline. In <code>static_trans_doc.m</code> the knob is
+          named <code>demoTotalMaps</code>; in the original <code>static_trans.m</code> it is the
+          hard-coded <code>totalMaps = 135</code> on line 96.
+        </p>
+<pre><code><span class="matlab-comment">% In static_trans_doc.m (Stage 1 block):</span>
+demoTotalMaps = <span class="matlab-num">10</span>;   <span class="matlab-comment">% instead of 5 or 135</span>
+
+<span class="matlab-comment">% In static_trans.m (line 96):</span>
+totalMaps = <span class="matlab-num">10</span>;       <span class="matlab-comment">% instead of 135</span></code></pre>
+        <p>Runtime scales roughly linearly with <code>totalMaps</code>.</p>
+      </div>
+    </details>
+
+    <!-- ======================== ALGORITHM ======================== -->
+    <h2 id="algorithm">Algorithm</h2>
+    <p>
+      The per-region pipeline runs five stages in order: setup, geometry, sampling, transmitter
+      placement, and signal-strength computation. Click any stage to expand its description and
+      code.
+    </p>
+
+    <div class="arg-group">
+      <!-- Stage 1 -->
+      <details class="arg" id="stage1" open>
+        <summary><strong>Stage 1</strong> - Setup &amp; region loop
+          <span class="arg-type">env_base, demo knobs, readtable</span>
+        </summary>
+        <div class="arg-body">
+          <p>
+            Initialize timers, declare the demo tuning knobs that throttle runtime, and read
+            the region list from <code>target_region_1.xlsx</code> (a two-column table with
+            headers <code>NW_lat</code> and <code>NW_lon</code>; one row per
+            256&thinsp;m&thinsp;&times;&thinsp;256&nbsp;m region).
+          </p>
+          <p>
+            Use <code>env_base</code> to split work across machines: set
+            <code>env_base = 100</code> on machine B, <code>200</code> on machine C, etc.; the
+            output folders <code>dataset_100</code>, <code>dataset_200</code>, &hellip; will
+            not collide.
+          </p>
+<pre><code><span class="matlab-kw">clear</span>; <span class="matlab-kw">clc</span>;
+startTime_all = datetime(<span class="matlab-string">'now'</span>);
+env_base      = <span class="matlab-num">1</span>;
+
+<span class="matlab-comment">% Demo tuning knobs (replace with production values for real runs)</span>
+demoMaxRegions = <span class="matlab-num">1</span>;    <span class="matlab-comment">% production: height(region_table)</span>
+demoResolution = <span class="matlab-num">10</span>;   <span class="matlab-comment">% production: 1  (m, coverage_test sample spacing)</span>
+demoTotalMaps  = <span class="matlab-num">5</span>;    <span class="matlab-comment">% production: 135</span>
+
+region_table = readtable(<span class="matlab-string">'target_region_1.xlsx'</span>);
+num_regions  = min(height(region_table), demoMaxRegions);</code></pre>
+          <figure class="example-figure">
+            <img src="stage1_region_tiling.png" alt="5x5 grid of 256m square region tiles with NW corners marked in red.">
+            <figcaption>
+              Figure: a 5&times;5 region grid laid out by stepping south-east from the seed NW
+              corner. Each blue tile is one 256&nbsp;m&thinsp;&times;&thinsp;256&nbsp;m region
+              processed in a single iteration of the outer loop; red dots mark the NW corner
+              that <code>region_table</code> stores. <code>env_num</code> increments across the
+              tiles row-major.
+            </figcaption>
+          </figure>
+        </div>
+      </details>
+
+      <!-- Stage 2 -->
+      <details class="arg" id="stage2" open>
+        <summary><strong>Stage 2</strong> - Region geometry &amp; OSM data
+          <span class="arg-type">haversine, OpenStreetMap API</span>
+        </summary>
+        <div class="arg-body">
+          <p>
+            Given the NW corner, compute the SE corner 256&nbsp;m to the south-east using a
+            local spherical-earth approximation, build a 256&times;256 lat/lon grid, and
+            measure the NW&ndash;SE haversine diagonal (passed later as <code>MaxRange</code>
+            to <code>coverage_test</code>).
+          </p>
+          <p>
+            Then download OSM building geometry for a bounding box slightly larger than the
+            region (so buildings straddling the border are still retrieved), saved to
+            <code>test&lt;env_num&gt;.osm</code>.
+          </p>
+<pre><code><span class="matlab-comment">% Bounding box + diagonal</span>
+R = <span class="matlab-num">6371</span> * <span class="matlab-num">1000</span>;   <span class="matlab-comment">% Earth radius (m)</span>
+d = <span class="matlab-num">256</span>;           <span class="matlab-comment">% region side length (m)</span>
+delta_lat = (d / R) * (<span class="matlab-num">180</span> / pi);
+delta_lon = (d / (R * cosd(nw_lat))) * (<span class="matlab-num">180</span> / pi);
+se_lat    = nw_lat - delta_lat;
+se_lon    = nw_lon + delta_lon;
+
+<span class="matlab-comment">% 256x256 candidate grid</span>
+[lat_mesh, lon_mesh] = meshgrid(linspace(nw_lat, se_lat, <span class="matlab-num">256</span>), ...
+                                linspace(nw_lon, se_lon, <span class="matlab-num">256</span>));
+
+<span class="matlab-comment">% OSM download (one HTTPS call per region)</span>
+osmAPI  = <span class="matlab-string">"https://api.openstreetmap.org/api/0.6/map?bbox="</span> + ...
+          num2str(west) + <span class="matlab-string">","</span> + num2str(south) + <span class="matlab-string">","</span> + ...
+          num2str(east) + <span class="matlab-string">","</span> + num2str(north);
+osmFile = <span class="matlab-string">'test'</span> + string(env_num) + <span class="matlab-string">'.osm'</span>;
+system(<span class="matlab-string">'curl "'</span> + osmAPI + <span class="matlab-string">'" > '</span> + osmFile);</code></pre>
+          <figure class="example-figure">
+            <img src="stage2_osm_buildings.png" alt="Streets basemap with OSM building polygons rendered in orange and a 256m square region outlined in blue.">
+            <figcaption>
+              Figure: 290 OSM building polygons returned by
+              <a href="https://www.mathworks.com/help/map/ref/readgeotable.html" target="_blank" rel="noopener"><code>readgeotable</code></a>
+              for the area around the seed NW corner, drawn over a streets basemap. The blue
+              square is the 256&nbsp;m&thinsp;&times;&thinsp;256&nbsp;m region whose grid will
+              be evaluated next; OSM is queried with a slightly larger box so polygons
+              straddling the border are still retrieved.
+            </figcaption>
+          </figure>
+        </div>
+      </details>
+
+      <!-- Stage 3 -->
+      <details class="arg" id="stage3" open>
+        <summary><strong>Stage 3</strong> - Sample valid (non-building) receiver locations
+          <span class="arg-type">siteviewer, coverage_test</span>
+        </summary>
+        <div class="arg-body">
+          <p>
+            <code>coverage_test</code> returns the lat/lon pairs at which a signal can be
+            evaluated given the building geometry. We only need the point locations (not the
+            signal values), so a single probe transmitter at a random grid cell is enough. The
+            returned points are clipped to the exact region box because
+            <code>coverage_test</code> may emit points slightly outside the requested bounds.
+          </p>
+<pre><code>siteviewer(<span class="matlab-string">"Buildings"</span>, osmFile, <span class="matlab-string">'Visible'</span>, <span class="matlab-string">'off'</span>);
+tx = txsite(<span class="matlab-string">"Name"</span>, <span class="matlab-string">"TX"</span>, <span class="matlab-string">"Latitude"</span>, tx_lat, <span class="matlab-string">"Longitude"</span>, tx_lon, ...
+            <span class="matlab-string">"TransmitterFrequency"</span>, <span class="matlab-num">28e9</span>, ...
+            <span class="matlab-string">"TransmitterPower"</span>, <span class="matlab-num">1</span>, <span class="matlab-string">"AntennaHeight"</span>, <span class="matlab-num">2</span>);
+
+pm = propagationModel(<span class="matlab-string">"raytracing"</span>, <span class="matlab-string">"Method"</span>, <span class="matlab-string">"sbr"</span>, ...
+                       <span class="matlab-string">"MaxNumReflections"</span>, <span class="matlab-num">0</span>, <span class="matlab-string">"MaxNumDiffractions"</span>, <span class="matlab-num">0</span>);
+[~, ~, lats, lons] = coverage_test(tx, pm, ...
+                     <span class="matlab-string">'MaxRange'</span>, diagonalDistance, ...
+                     <span class="matlab-string">'Resolution'</span>, demoResolution);</code></pre>
+          <figure class="example-figure">
+            <img src="stage3_valid_points.png" alt="Map showing valid receiver points (blue dots) clustered along streets between buildings, with a probe transmitter marked as a red star.">
+            <figcaption>
+              Figure: actual <code>coverage_test</code> output for the demo region. Blue dots
+              are the lat/lon pairs the function returns &mdash; non-building positions where
+              <code>sigstrength</code> can later be evaluated. The red star is the probe
+              transmitter (placed at one random grid cell). Buildings are shown in light
+              orange.
+            </figcaption>
+          </figure>
+        </div>
+      </details>
+
+      <!-- Stage 4 -->
+      <details class="arg" id="stage4" open>
+        <summary><strong>Stage 4</strong> - Place &amp; configure transmitters
+          <span class="arg-type">randperm, phased.URA, phased.GaussianAntennaElement</span>
+        </summary>
+        <div class="arg-body">
+          <p>
+            From the set of non-building grid points, pick <code>totalMaps</code> positions
+            uniformly at random, save them to <code>transmitter_coordinates.xlsx</code>, and
+            attach an 8&times;8 uniform rectangular array (Gaussian element,
+            [20&deg;&times;10&deg;] beamwidth) to each transmitter. All transmitters share
+            the same geometry &mdash; only <code>AntennaAngle</code> varies (uniform in
+            [0, 360&deg;)), producing <code>totalMaps</code> distinct coverage footprints in
+            the same environment.
+          </p>
+<pre><code><span class="matlab-comment">% Random selection of transmitter sites</span>
+totalMaps       = demoTotalMaps;   <span class="matlab-comment">% production: 135</span>
+site_table      = table(receiver_lats, receiver_lons);
+selected_idx    = randperm(size(site_table, <span class="matlab-num">1</span>), totalMaps);
+selected_coords = site_table(selected_idx, :);
+writetable(selected_coords, fullfile(directory_name, <span class="matlab-string">'transmitter_coordinates.xlsx'</span>));
+
+<span class="matlab-comment">% Per-transmitter array configuration</span>
+<span class="matlab-kw">for</span> t = <span class="matlab-num">1</span>:totalMaps
+    lambda = physconst(<span class="matlab-string">"lightspeed"</span>) / tx(t).TransmitterFrequency;
+    array  = phased.URA(<span class="matlab-string">'Size'</span>, [<span class="matlab-num">8</span> <span class="matlab-num">8</span>], <span class="matlab-string">'Lattice'</span>, <span class="matlab-string">'Rectangular'</span>, ...
+                        <span class="matlab-string">'ArrayNormal'</span>, <span class="matlab-string">'x'</span>);
+    array.ElementSpacing = [<span class="matlab-num">0.5</span> <span class="matlab-num">0.5</span>] * lambda;
+    elem = phased.GaussianAntennaElement;
+    elem.FrequencyRange = [<span class="matlab-num">0</span> tx(t).TransmitterFrequency];
+    elem.Beamwidth      = [<span class="matlab-num">20</span> <span class="matlab-num">10</span>];
+    array.Element       = elem;
+    tx(t).Antenna       = array;
+    tx(t).AntennaAngle  = rand() * <span class="matlab-num">360</span>;   <span class="matlab-comment">% random azimuth</span>
+<span class="matlab-kw">end</span></code></pre>
+          <figure class="example-figure">
+            <img src="stage4_antenna_pattern.png" alt="3D directivity pattern of an 8x8 URA with Gaussian element at 28 GHz, showing a strong main lobe with [20,10] degree beamwidth.">
+            <figcaption>
+              Figure: 3-D directivity pattern (in dBi) of one transmitter's antenna array at
+              28&nbsp;GHz, computed with
+              <a href="https://www.mathworks.com/help/phased/ref/phased.ura-system-object.html" target="_blank" rel="noopener"><code>phased.URA</code></a>
+              + <a href="https://www.mathworks.com/help/phased/ref/phased.gaussianantennaelement-system-object.html" target="_blank" rel="noopener"><code>phased.GaussianAntennaElement</code></a>.
+              The single steerable lobe is what
+              <code>AntennaAngle</code> rotates azimuthally for each of the
+              <code>totalMaps</code> transmitters.
+            </figcaption>
+          </figure>
+          <figure class="example-figure">
+            <img src="stage4_tx_placement.png" alt="Map of 5 transmitters placed at random valid grid positions, each shown as a colored star with a line indicating its random AntennaAngle.">
+            <figcaption>
+              Figure: 5 randomly placed transmitters from the demo run, each with its own
+              random <code>AntennaAngle</code> shown as a colored direction line. Production
+              <code>static_trans.m</code> uses 135 transmitters in this same way; the demo
+              uses 5 so the per-tx orientations stay readable.
+            </figcaption>
+          </figure>
+        </div>
+      </details>
+
+      <!-- Stage 5 -->
+      <details class="arg" id="stage5" open>
+        <summary><strong>Stage 5</strong> - Compute signal strength &amp; export
+          <span class="arg-type">rxsite, sigstrength, writetable</span>
+        </summary>
+        <div class="arg-body">
+          <p>
+            Receivers are all valid grid points from Stage&nbsp;3. For each transmitter,
+            <a href="https://www.mathworks.com/help/comm/ref/rxsite.sigstrength.html" target="_blank" rel="noopener"><code>sigstrength</code></a>
+            returns an N-element vector of receiver powers in dBm, written alongside the
+            receiver coordinates to <code>&lt;t&gt;.xlsx</code>. After the loop, per-region
+            elapsed time is reported.
+          </p>
+<pre><code>rx = rxsite(<span class="matlab-string">"Latitude"</span>, receiver_lats, ...
+            <span class="matlab-string">"Longitude"</span>, receiver_lons, ...
+            <span class="matlab-string">"ReceiverSensitivity"</span>, <span class="matlab-num">-100</span>, ...
+            <span class="matlab-string">"AntennaHeight"</span>, <span class="matlab-num">2</span>);
+pm = propagationModel(<span class="matlab-string">"raytracing"</span>, <span class="matlab-string">"Method"</span>, <span class="matlab-string">"sbr"</span>, ...
+                      <span class="matlab-string">"MaxNumReflections"</span>, <span class="matlab-num">1</span>, <span class="matlab-string">"MaxNumDiffractions"</span>, <span class="matlab-num">0</span>);
+
+<span class="matlab-kw">for</span> t = <span class="matlab-num">1</span>:totalMaps
+    sigStre = sigstrength(rx, tx(t), pm);
+    T = table(receiver_lats, receiver_lons, sigStre', ...
+              <span class="matlab-string">'VariableNames'</span>, {<span class="matlab-string">'Latitude'</span>, <span class="matlab-string">'Longitude'</span>, <span class="matlab-string">'Power'</span>});
+    writetable(T, fullfile(directory_name, string(t) + <span class="matlab-string">".xlsx"</span>));
+<span class="matlab-kw">end</span>
+
+elapsedTime_env = seconds(datetime(<span class="matlab-string">'now'</span>) - startTime_env);
+disp(<span class="matlab-string">"Time for env "</span> + string(env_num) + <span class="matlab-string">": "</span> + ...
+     string(elapsedTime_env) + <span class="matlab-string">" seconds"</span>);</code></pre>
+          <div class="note">
+            <strong>Note.</strong> The propagation model here enables one ray-bounce reflection
+            (<code>MaxNumReflections = 1</code>) to capture first-order NLOS paths. This is the
+            dominant runtime cost of the script.
+          </div>
+          <figure class="example-figure">
+            <img src="stage5_signal_heatmap.png" alt="Map showing actual signal-strength values from one transmitter on top of street geometry, jet-colored from blue (weak) to red (strong) along visible lines of sight.">
+            <figcaption>
+              Figure: real <code>sigstrength</code> output for one of the 5 transmitters
+              (Tx 1). Each colored dot is one grid cell's received power in dBm; the dominant
+              red lobe along a single street is the antenna's steerable beam, with
+              ray-tracing shadow drop-off where buildings interrupt line of sight.
+            </figcaption>
+          </figure>
+          <figure class="example-figure">
+            <img src="stage5_signal_composite.png" alt="Six panel grid showing per-transmitter signal strength scatter heatmaps with jet colormap, sharing a single colorbar.">
+            <figcaption>
+              Figure: composite of all 5 transmitters' signal maps, sharing a 5&ndash;95%
+              percentile color scale. Same antenna geometry, same buildings, different
+              <code>AntennaAngle</code> &mdash; the lobe rotates and the shadows shift. One
+              Excel file (<code>1.xlsx</code> &hellip; <code>&lt;totalMaps&gt;.xlsx</code>)
+              is written per transmitter in production.
+            </figcaption>
+          </figure>
+        </div>
+      </details>
+    </div>
+
+    <!-- ======================== INPUT FILES ======================== -->
+    <h2 id="input-files">Input Files</h2>
+    <div class="arg-group">
+      <details class="arg" open>
+        <summary><code>target_region_1.xlsx</code>
+          <span class="arg-type">required, table, working dir</span>
+        </summary>
+        <div class="arg-body">
+          Two-column table with headers <code>NW_lat</code> and <code>NW_lon</code>. One row per
+          256&nbsp;m &times; 256&nbsp;m region to process.
+        </div>
+      </details>
+      <details class="arg" open>
+        <summary><code>coverage_test.m</code>
+          <span class="arg-type">required helper, repository root</span>
+        </summary>
+        <div class="arg-body">
+          Custom variant of MATLAB's
+          <a href="https://www.mathworks.com/help/comm/ref/txsite.coverage.html" target="_blank" rel="noopener"><code>coverage</code></a>
+          that also returns the lat/lon pairs sampled inside each building, used as a building
+          mask.
+        </div>
+      </details>
+      <details class="arg" open>
+        <summary>Internet access
+          <span class="arg-type">required per region</span>
+        </summary>
+        <div class="arg-body">
+          Each region triggers one HTTPS call to
+          <a href="https://api.openstreetmap.org"><code>api.openstreetmap.org</code></a> via
+          <code>curl</code> on the system PATH.
+        </div>
+      </details>
+    </div>
+
+    <!-- ======================== OUTPUT FILES ======================== -->
+    <h2 id="output-files">Output Files</h2>
+    <p>Per region, written to <code>dataset_&lt;env_num&gt;/</code>:</p>
+    <ul class="compact">
+      <li><code>transmitter_coordinates.xlsx</code> &mdash; <em>N</em>&times;2 table of transmitter
+        latitudes and longitudes.</li>
+      <li><code>&lt;t&gt;.xlsx</code> for t = 1&hellip;<code>totalMaps</code> &mdash; receiver power
+        map for the <em>t</em>-th transmitter. Columns
+        <code>Latitude</code>, <code>Longitude</code>, <code>Power</code> (dBm).</li>
+    </ul>
+    <p>Per region, written to the working directory:</p>
+    <ul class="compact">
+      <li><code>test&lt;env_num&gt;.osm</code> &mdash; cached OpenStreetMap extract used for
+        building geometry. Safe to delete after the run completes.</li>
+    </ul>
+
+    <!-- ======================== DEPENDENCIES ======================== -->
+    <h2 id="dependencies">Dependencies</h2>
+    <ul class="compact">
+      <li>MATLAB R2023b or later</li>
+      <li>Antenna Toolbox &mdash;
+        <a href="https://www.mathworks.com/help/comm/ref/txsite.html" target="_blank" rel="noopener"><code>txsite</code></a>,
+        <a href="https://www.mathworks.com/help/comm/ref/rxsite.html" target="_blank" rel="noopener"><code>rxsite</code></a>,
+        <a href="https://www.mathworks.com/help/comm/ref/rxsite.sigstrength.html" target="_blank" rel="noopener"><code>sigstrength</code></a>,
+        <a href="https://www.mathworks.com/help/comm/ref/siteviewer.html" target="_blank" rel="noopener"><code>siteviewer</code></a></li>
+      <li>Phased Array System Toolbox &mdash;
+        <a href="https://www.mathworks.com/help/phased/ref/phased.ura-system-object.html" target="_blank" rel="noopener"><code>phased.URA</code></a>,
+        <a href="https://www.mathworks.com/help/phased/ref/phased.gaussianantennaelement-system-object.html" target="_blank" rel="noopener"><code>phased.GaussianAntennaElement</code></a></li>
+      <li>Mapping Toolbox &mdash; geographic coordinates,
+        <a href="https://www.mathworks.com/help/matlab/ref/geoscatter.html" target="_blank" rel="noopener"><code>geoscatter</code></a></li>
+      <li>Communications Toolbox &mdash;
+        <a href="https://www.mathworks.com/help/comm/ref/propagationmodel.html" target="_blank" rel="noopener"><code>propagationModel</code></a></li>
+      <li><code>curl</code> on the system PATH</li>
+      <li>Local helper: <code>coverage_test.m</code></li>
+    </ul>
+
+    <!-- ======================== TIPS ======================== -->
+    <h2 id="tips">Tips</h2>
+    <div class="tip">
+      <strong>Tip 1.</strong> Ray tracing with <code>MaxNumReflections = 1</code> is substantially
+      more expensive than <code>MaxNumReflections = 0</code>. Set both diffractions and reflections
+      to <code>0</code> when prototyping; switch to <code>1</code> only for final dataset
+      generation.
+    </div>
+    <div class="tip">
+      <strong>Tip 2.</strong> The probe-transmitter call in Stage&nbsp;3 is used only to recover
+      the list of valid (non-building) lat/lon samples. If it becomes a bottleneck, replace it with
+      <a href="https://www.mathworks.com/help/map/ref/readgeotable.html" target="_blank" rel="noopener"><code>readgeotable(osmFile, "Layer", "buildings")</code></a>
+      followed by
+      <a href="https://www.mathworks.com/help/matlab/ref/polyshape.isinterior.html" target="_blank" rel="noopener"><code>isinterior</code></a>
+      &mdash; roughly 10&times; faster on dense urban geometry.
+    </div>
+    <div class="tip">
+      <strong>Tip 3.</strong> To parallelize across machines, assign non-overlapping
+      <code>env_base</code> ranges so output folder names do not collide.
+    </div>
+    <div class="tip">
+      <strong>Tip 4.</strong> The final
+      <a href="https://www.mathworks.com/help/comm/ref/rxsite.sigstrength.html" target="_blank" rel="noopener"><code>sigstrength</code></a>
+      call is a single batch invocation over all receivers. It cannot be cancelled mid-call. If
+      you need an interruptible version,
+      wrap it in a per-receiver loop &mdash; see the equivalent fix applied to
+      <code>SimulateAllButtonPushed</code> in <code>app.m</code>.
+    </div>
+
+    <!-- ======================== SEE ALSO ======================== -->
+    <h2 id="see-also">See Also</h2>
+    <h3>Functions</h3>
+    <div class="see-also">
+      <a href="https://www.mathworks.com/help/comm/ref/txsite.html" target="_blank" rel="noopener"><code>txsite</code></a>
+      <a href="https://www.mathworks.com/help/comm/ref/rxsite.html" target="_blank" rel="noopener"><code>rxsite</code></a>
+      <a href="https://www.mathworks.com/help/comm/ref/rxsite.sigstrength.html" target="_blank" rel="noopener"><code>sigstrength</code></a>
+      <a href="https://www.mathworks.com/help/comm/ref/txsite.coverage.html" target="_blank" rel="noopener"><code>coverage</code></a>
+      <a href="https://www.mathworks.com/help/comm/ref/propagationmodel.html" target="_blank" rel="noopener"><code>propagationModel</code></a>
+      <a href="https://www.mathworks.com/help/comm/ref/siteviewer.html" target="_blank" rel="noopener"><code>siteviewer</code></a>
+      <a href="https://www.mathworks.com/help/phased/ref/phased.ura-system-object.html" target="_blank" rel="noopener"><code>phased.URA</code></a>
+      <a href="https://www.mathworks.com/help/phased/ref/phased.gaussianantennaelement-system-object.html" target="_blank" rel="noopener"><code>phased.GaussianAntennaElement</code></a>
+      <a href="https://www.mathworks.com/help/map/ref/readgeotable.html" target="_blank" rel="noopener"><code>readgeotable</code></a>
+    </div>
+
+    <h3>Related Scripts in this Repository</h3>
+    <ul class="compact">
+      <li><code>../coverage_test.m</code> &mdash; helper used in Stage&nbsp;3</li>
+      <li><code>../fix angle simulation/static_trans.m</code> &mdash; fixed-angle variant of this
+        script</li>
+      <li><code>../app.m</code> (Signal Map Generation tab) &mdash; interactive GUI front-end</li>
+    </ul>
+
+  </main>
+</div>
+
+</body>
+</html>

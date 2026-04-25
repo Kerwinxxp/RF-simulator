@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>fix_angle_trajectory - Generate fixed-angle trajectories and signal-strength datasets</title>
+<style>
+  :root {
+    --accent:          #2E5BFF;
+    --accent-strong:   #1E3FB8;
+    --accent-soft:     #EDF1FF;
+    --accent-softer:   #F6F8FF;
+    --text:            #0D1117;
+    --text-muted:      #57606A;
+    --text-faint:      #8B95A1;
+    --bg:              #FFFFFF;
+    --bg-soft:         #FAFBFC;
+    --border:          #D0D7DE;
+    --border-soft:     #E5E8EC;
+    --border-faint:    #EFF1F4;
+    --code-bg:         #F6F8FA;
+    --code-text:       #1F2328;
+    --tip-bg:          #FFFBEB;
+    --tip-accent:      #C97C0C;
+    --note-bg:         #F1F5FF;
+    --note-accent:     #2E5BFF;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI",
+                 Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 14px; line-height: 1.55;
+    color: var(--text); background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    padding: 8px 24px;
+    font-size: 12.5px; color: var(--text-muted);
+    background: var(--bg);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .topbar .crumbs { display: flex; gap: 8px; align-items: center; max-width: 1400px; margin: 0 auto; }
+  .topbar .crumbs a { color: var(--text-muted); text-decoration: none; transition: color 0.1s; }
+  .topbar .crumbs a:hover { color: var(--text); }
+  .topbar .crumbs .sep { color: var(--text-faint); font-size: 10px; }
+  .topbar .crumbs > span:last-child { color: var(--text); font-weight: 500; }
+
+  .page { display: flex; max-width: 1400px; margin: 0 auto; gap: 0; }
+  .sidebar {
+    width: 232px; flex-shrink: 0;
+    padding: 20px 12px 28px 24px;
+    position: sticky; top: 36px; align-self: flex-start;
+    max-height: calc(100vh - 36px); overflow-y: auto;
+    font-size: 13px; border-right: 1px solid var(--border-soft);
+  }
+  .sidebar::-webkit-scrollbar       { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar h3 {
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.7px;
+    text-transform: uppercase; color: var(--text-faint);
+    margin: 0 0 6px 8px;
+  }
+  .sidebar ul { list-style: none; padding: 0; margin: 0; }
+  .sidebar li { margin: 0; }
+  .sidebar a {
+    display: block; padding: 3px 8px;
+    color: var(--text-muted); text-decoration: none;
+    border-radius: var(--radius-sm);
+    transition: color 0.1s, background 0.1s; line-height: 1.5;
+  }
+  .sidebar a:hover { color: var(--text); background: var(--accent-softer); }
+  .sidebar > ul > li > a { font-weight: 500; color: var(--text); }
+  .sidebar ul ul { margin: 0 0 4px 0; }
+  .sidebar ul ul a { padding-left: 20px; font-size: 12.5px; font-weight: 400; }
+
+  .content { flex: 1; padding: 24px 40px 80px 32px; min-width: 0; max-width: 820px; }
+
+  h1 {
+    font-size: 26px; font-weight: 600;
+    margin: 0 0 4px 0; letter-spacing: -0.4px;
+    color: var(--text); line-height: 1.25;
+  }
+  h1 code {
+    font-family: "SF Mono", "Menlo", Monaco, Consolas, monospace;
+    font-weight: 600; font-size: 25px; background: none; padding: 0;
+    letter-spacing: -0.3px;
+  }
+  .tagline {
+    font-size: 14px; color: var(--text-muted); font-weight: 400;
+    margin: 0 0 6px 0; line-height: 1.5;
+  }
+  h2 {
+    font-size: 18px; font-weight: 600;
+    margin: 30px 0 8px 0; padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-soft);
+    color: var(--text); letter-spacing: -0.2px;
+    scroll-margin-top: 52px; position: relative;
+  }
+  h2:first-of-type { margin-top: 22px; }
+  h2::before {
+    content: "#"; position: absolute; left: -18px; top: 0;
+    color: var(--text-faint); font-weight: 400;
+    opacity: 0; transition: opacity 0.15s; font-size: 16px;
+  }
+  h2:hover::before { opacity: 0.5; }
+  h3 {
+    font-size: 14.5px; font-weight: 600;
+    margin: 18px 0 6px 0; color: var(--text);
+    scroll-margin-top: 52px;
+  }
+  p { margin: 6px 0 8px 0; }
+
+  code {
+    font-family: "SF Mono", "Menlo", Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 12.8px; background: var(--code-bg);
+    padding: 1px 6px; border-radius: var(--radius-sm);
+    color: var(--code-text); letter-spacing: -0.1px;
+  }
+  pre {
+    position: relative; background: var(--code-bg);
+    border: 1px solid var(--border-soft); border-radius: var(--radius-md);
+    padding: 12px 16px; overflow-x: auto;
+    font-family: "SF Mono", "Menlo", Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 12.8px; line-height: 1.55; margin: 8px 0 12px 0;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; color: var(--code-text); letter-spacing: 0; }
+  pre::before {
+    content: "matlab"; position: absolute; top: 4px; right: 10px;
+    font-size: 9.5px; font-weight: 500; color: var(--text-faint);
+    letter-spacing: 0.5px; font-family: -apple-system, sans-serif;
+    pointer-events: none; opacity: 0.55;
+  }
+  pre::-webkit-scrollbar       { height: 4px; }
+  pre::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  pre::-webkit-scrollbar-track { background: transparent; }
+
+  .matlab-comment { color: #5D6975; font-style: italic; }
+  .matlab-string  { color: #A8324A; }
+  .matlab-kw      { color: #1E40AF; font-weight: 500; }
+  .matlab-num     { color: #0A6E3D; }
+
+  .syntax-list {
+    border: 1px solid var(--border-soft); border-radius: var(--radius-md);
+    overflow: hidden; background: var(--code-bg);
+  }
+  .syntax-list div {
+    padding: 9px 16px; border-bottom: 1px solid var(--border-soft);
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 12.8px; display: flex; align-items: center; gap: 12px;
+  }
+  .syntax-list div:last-child { border-bottom: none; }
+  .syntax-list div code { background: none; padding: 0; color: var(--text); }
+  .ex-link {
+    display: inline-block; font-family: -apple-system, sans-serif;
+    font-size: 10px; font-weight: 600; color: var(--accent);
+    text-decoration: none; background: var(--accent-soft);
+    padding: 2px 8px; border-radius: 3px;
+    letter-spacing: 0.3px; text-transform: uppercase;
+    transition: background 0.12s, color 0.12s;
+  }
+  .ex-link:hover { background: var(--accent); color: #fff; text-decoration: none; }
+
+  details.panel {
+    border: 1px solid var(--border-soft); border-radius: var(--radius-md);
+    margin: 6px 0; background: var(--bg);
+    transition: border-color 0.12s;
+  }
+  details.panel:hover { border-color: var(--border); }
+  details.panel[open] { border-color: var(--border); }
+  details.panel > summary {
+    cursor: pointer; padding: 10px 14px 10px 12px;
+    font-size: 13.5px; font-weight: 500; color: var(--text);
+    list-style: none; display: flex; align-items: center; user-select: none;
+    border-radius: var(--radius-md); transition: background 0.1s;
+  }
+  details.panel > summary::-webkit-details-marker { display: none; }
+  details.panel > summary::before {
+    content: ""; width: 7px; height: 7px;
+    border-right: 1.5px solid var(--text-muted);
+    border-bottom: 1.5px solid var(--text-muted);
+    transform: rotate(-45deg); margin-right: 11px; margin-left: 2px;
+    transition: transform 0.18s, border-color 0.12s; flex-shrink: 0;
+  }
+  details.panel[open] > summary::before {
+    transform: rotate(45deg); margin-top: -3px; border-color: var(--accent);
+  }
+  details.panel > summary:hover { background: var(--accent-softer); }
+  details.panel[open] > summary {
+    background: var(--bg-soft);
+    border-bottom: 1px solid var(--border-soft);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+  details.panel > .panel-body { padding: 12px 18px 14px 32px; }
+
+  .arg-group {
+    border: 1px solid var(--border-soft); border-radius: var(--radius-md);
+    margin: 8px 0 14px 0; background: var(--bg); overflow: hidden;
+  }
+  details.arg { border-top: 1px solid var(--border-faint); margin: 0; padding: 0; }
+  details.arg:first-of-type { border-top: none; }
+  details.arg > summary {
+    padding: 9px 14px; font-size: 13.5px;
+    cursor: pointer; list-style: none; color: var(--text);
+    display: flex; align-items: center; transition: background 0.1s;
+  }
+  details.arg > summary:hover { background: var(--accent-softer); }
+  details.arg[open] > summary {
+    background: var(--bg-soft);
+    border-bottom: 1px solid var(--border-faint);
+  }
+  details.arg > summary::-webkit-details-marker { display: none; }
+  details.arg > summary::before {
+    content: ""; width: 6px; height: 6px;
+    border-right: 1.5px solid var(--text-faint);
+    border-bottom: 1.5px solid var(--text-faint);
+    transform: rotate(-45deg); margin-right: 11px; margin-left: 2px;
+    transition: transform 0.18s, border-color 0.12s; flex-shrink: 0;
+  }
+  details.arg[open] > summary::before {
+    transform: rotate(45deg); margin-top: -2px; border-color: var(--accent);
+  }
+  details.arg > summary .arg-type {
+    color: var(--text-faint); font-weight: 400;
+    font-size: 12.2px; font-style: italic; margin-left: 8px;
+  }
+  details.arg > .arg-body {
+    padding: 4px 16px 12px 30px; font-size: 13px; line-height: 1.55;
+  }
+
+  .tip, .note {
+    border-left: 3px solid; padding: 8px 14px;
+    margin: 10px 0; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 13px; line-height: 1.55;
+  }
+  .tip  { background: var(--tip-bg);  border-color: var(--tip-accent); }
+  .note { background: var(--note-bg); border-color: var(--note-accent); }
+  .tip strong  { color: #92520C; font-weight: 600; margin-right: 3px; }
+  .note strong { color: var(--accent-strong); font-weight: 600; margin-right: 3px; }
+
+  .see-also { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 6px; }
+  .see-also a {
+    text-decoration: none; padding: 3px 9px;
+    background: var(--code-bg); border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    transition: background 0.1s, border-color 0.1s;
+  }
+  .see-also a code {
+    background: none; padding: 0; color: var(--text);
+    font-size: 12.5px; letter-spacing: -0.1px;
+  }
+  .see-also a:hover { background: var(--accent); border-color: var(--accent); }
+  .see-also a:hover code { color: #fff; }
+
+  a { color: var(--accent); text-decoration: none; transition: color 0.1s; }
+  a:hover { color: var(--accent-strong); text-decoration: underline; }
+  a[target="_blank"]::after {
+    content: "↗"; font-size: 9px; margin-left: 2px;
+    vertical-align: baseline; color: currentColor; opacity: 0.4;
+  }
+  a[target="_blank"]:hover::after { opacity: 0.85; }
+  .see-also a[target="_blank"]::after,
+  .topbar a[target="_blank"]::after { display: none; }
+
+  ul.compact { margin: 4px 0 8px 0; padding-left: 22px; }
+  ul.compact li { margin: 2px 0; }
+
+  .example-figure {
+    margin: 12px auto 6px auto;
+    padding: 0;
+    text-align: center;
+    max-width: 640px;
+  }
+  .example-figure img {
+    display: block;
+    max-width: 100%;
+    max-height: 420px;
+    width: auto;
+    height: auto;
+    margin: 0 auto;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    background: #fff;
+  }
+  .example-figure figcaption {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    text-align: left;
+    margin: 8px 4px 0 4px;
+    line-height: 1.55;
+    max-width: 640px;
+  }
+  .example-figure figcaption code { font-size: 12px; }
+  .figure-placeholder {
+    background: var(--bg-soft);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 12.5px;
+    margin: 10px 0;
+  }
+
+  .output-line {
+    color: var(--text-muted);
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 12px; padding: 1px 0 1px 14px; margin: 0;
+    border-left: 2px solid var(--border-soft);
+    background: var(--bg-soft); line-height: 1.55;
+  }
+  .output-line:first-of-type { padding-top: 8px; border-top-left-radius: var(--radius-sm); }
+  .output-line:last-of-type  { padding-bottom: 8px; border-bottom-left-radius: var(--radius-sm); }
+
+  @media (max-width: 1000px) {
+    .sidebar { display: none; }
+    .content { padding: 20px 24px 60px; max-width: 100%; }
+    h1 { font-size: 22px; } h1 code { font-size: 21px; }
+    h2 { font-size: 16px; } h2::before { display: none; }
+  }
+  @media (max-width: 640px) {
+    .topbar { padding: 8px 14px; }
+    .content { padding: 16px 14px 50px; }
+    pre { font-size: 12px; padding: 10px 12px; }
+    details.panel > .panel-body { padding: 10px 14px 12px 18px; }
+    details.arg > .arg-body     { padding: 4px 14px 12px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="crumbs">
+    <a href="#">RF-Propagation &amp; Trajectory Studio</a>
+    <span class="sep">›</span>
+    <a href="#">Reference</a>
+    <span class="sep">›</span>
+    <a href="#">Scripts</a>
+    <span class="sep">›</span>
+    <span>fix_angle_trajectory</span>
+  </div>
+</div>
+
+<div class="page">
+
+  <aside class="sidebar">
+    <h3>On this page</h3>
+    <ul>
+      <li><a href="#syntax">Syntax</a></li>
+      <li><a href="#description">Description</a></li>
+      <li><a href="#examples">Examples</a>
+        <ul>
+          <li><a href="#ex1">Run the Full Pipeline</a></li>
+          <li><a href="#ex2">Inspect One Trajectory's Angles</a></li>
+          <li><a href="#ex3">Quick-Run Configuration</a></li>
+        </ul>
+      </li>
+      <li><a href="#algorithm">Algorithm</a>
+        <ul>
+          <li><a href="#stage1">Stage 1 - Region Grid</a></li>
+          <li><a href="#stage2">Stage 2 - OSM Occupancy</a></li>
+          <li><a href="#stage3">Stage 3 - RRT Path Planning</a></li>
+          <li><a href="#stage4">Stage 4 - Target &amp; Fix Angle</a></li>
+          <li><a href="#stage5">Stage 5 - Signal Simulation</a></li>
+        </ul>
+      </li>
+      <li><a href="#input-files">Input Files</a></li>
+      <li><a href="#output-files">Output Files</a></li>
+      <li><a href="#dependencies">Dependencies</a></li>
+      <li><a href="#tips">Tips</a></li>
+      <li><a href="#see-also">See Also</a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+
+    <h1><code>fix_angle_trajectory</code></h1>
+    <p class="tagline">
+      Generate obstacle-aware trajectories where each waypoint's antenna points at a stationary
+      target, then compute the resulting per-transmitter signal-strength dataset.
+    </p>
+
+    <p>
+      The <code>fix angle simulation</code> folder contains a two-stage pipeline. First,
+      <code>fix_angle_trajectory.m</code> uses RRT path planning over an OpenStreetMap-derived
+      occupancy grid to generate trajectories, picks a random non-overlapping target for each
+      trajectory, and computes the geographic bearing from every waypoint to that target. Then,
+      <code>generate_fix_angle.m</code> reads those bearings and runs ray-traced
+      <code>sigstrength</code> at every receiver position, producing one Excel signal map per
+      transmitter location.
+    </p>
+
+    <!-- ======================== SYNTAX ======================== -->
+    <h2 id="syntax">Syntax</h2>
+    <div class="syntax-list">
+      <div><code>fix_angle_trajectory</code> <a class="ex-link" href="#ex1">example</a></div>
+      <div><code>generate_fix_angle</code></div>
+    </div>
+
+    <!-- ======================== DESCRIPTION ======================== -->
+    <h2 id="description">Description</h2>
+    <p>
+      <code>fix_angle_trajectory</code> generates a tiled grid of
+      <code>num_regions&times;num_regions</code> non-overlapping 256&nbsp;m&thinsp;&times;&thinsp;256&nbsp;m
+      regions starting at a configurable NW corner. For each region it downloads OSM building
+      geometry, builds a 256&times;256 binary occupancy map, then plans
+      <code>num_trajectories</code> RRT paths between random non-building start/end positions.
+      Each trajectory is sampled to 100 unique waypoints, paired with a random non-overlapping
+      target, and a per-waypoint geographic bearing is written to disk.
+    </p>
+    <p>
+      <code>generate_fix_angle</code> consumes those CSV files. For every trajectory it creates
+      one <code>txsite</code> per waypoint with the precomputed
+      <code>AntennaAngle</code>, attaches an 8&times;8 URA with a Gaussian element of randomly
+      sampled beamwidth in [6&deg;, 20&deg;], then computes <code>sigstrength</code> at every
+      non-building receiver position using a 1-reflection SBR ray-tracing model. Results are
+      written as one Excel file per waypoint.
+    </p>
+
+    <!-- ======================== EXAMPLES ======================== -->
+    <h2 id="examples">Examples</h2>
+
+    <details class="panel" id="ex1" open>
+      <summary>Run the Full Pipeline</summary>
+      <div class="panel-body">
+        <p>
+          Generate trajectories for the default 5&times;5 region grid (25 datasets, 25
+          trajectories each), then run the signal-strength simulation over all of them.
+        </p>
+<pre><code><span class="matlab-comment">% Stage A: trajectory generation</span>
+fix_angle_trajectory       <span class="matlab-comment">% writes dataset1/, dataset2/, ... dataset25/</span>
+
+<span class="matlab-comment">% Stage B: signal-strength simulation</span>
+generate_fix_angle         <span class="matlab-comment">% writes dataset*/SignalMapData/trajectory_maps_*/*.xlsx</span></code></pre>
+        <p>Output for one trajectory inside <code>dataset1/SignalMapData/trajectory_maps_1/</code>:</p>
+        <div class="output-line">beamwidth.csv          &mdash; 1 random integer in [6, 20]</div>
+        <div class="output-line">1.xlsx ... 100.xlsx    &mdash; one per waypoint, columns Lat/Lon/Power</div>
+
+        <figure class="example-figure">
+          <img src="ex1_signal_heatmap.png" alt="Signal-strength heatmap of one waypoint at 28 GHz, showing rotational ray-tracing artifacts and a strong main lobe.">
+          <figcaption>
+            Figure: signal-strength map produced by Stage&nbsp;5 for a single waypoint at
+            28&nbsp;GHz with one ray-bounce reflection. The visible "fan" pattern around the
+            transmitter location reflects the SBR ray-tracing geometry; cooler colors mark
+            shadowed receivers behind buildings. Each Excel file in
+            <code>SignalMapData/trajectory_maps_&lt;i&gt;/</code> is one such map.
+          </figcaption>
+        </figure>
+      </div>
+    </details>
+
+    <details class="panel" id="ex2" open>
+      <summary>Inspect One Trajectory's Computed Angles</summary>
+      <div class="panel-body">
+        <p>
+          After Stage A finishes, the per-trajectory angle file
+          <code>trajectory_&lt;i&gt;_targetAndAngles.csv</code> stores the target lat/lon in the
+          first two slots followed by 100 antenna bearings. Plotting them confirms the antenna
+          points at the target everywhere along the path.
+        </p>
+<pre><code><span class="matlab-comment">% Load one trajectory + its angle file</span>
+traj   = readmatrix(<span class="matlab-string">'dataset1/trajectory_1.csv'</span>);
+angles = readmatrix(<span class="matlab-string">'dataset1/trajectory_1_targetAndAngles.csv'</span>);
+target = angles(<span class="matlab-num">1</span>:<span class="matlab-num">2</span>);
+bearings = angles(<span class="matlab-num">3</span>:<span class="matlab-kw">end</span>);
+
+figure;
+geoplot(traj(:,<span class="matlab-num">1</span>), traj(:,<span class="matlab-num">2</span>), <span class="matlab-string">'b-o'</span>); <span class="matlab-kw">hold on</span>;
+geoscatter(target(<span class="matlab-num">1</span>), target(<span class="matlab-num">2</span>), <span class="matlab-num">80</span>, <span class="matlab-string">'red'</span>, <span class="matlab-string">'filled'</span>);
+geobasemap streets;
+title(sprintf(<span class="matlab-string">'Path with %d bearings to target'</span>, length(bearings)));</code></pre>
+
+        <figure class="example-figure">
+          <img src="ex2_traj_with_target.png" alt="One RRT-planned trajectory in blue with start (green square), end (purple triangle), and target (red dot). Faint dashed lines show sample bearings to the target.">
+          <figcaption>
+            Figure: one trajectory's 100 waypoints (blue line) with the green start, purple
+            end, and red target overlaid. Faint dashed rays from six sampled waypoints
+            illustrate the per-waypoint bearing computed in Stage&nbsp;4. All 100 antennas
+            point at the red dot regardless of where the path goes &mdash; the defining
+            property of <em>fix-angle</em> mode.
+          </figcaption>
+        </figure>
+
+        <div class="tip">
+          <strong>Tip.</strong> If the bearings look symmetric around 180&deg;, the target is
+          likely near the path centroid. Re-run trajectory generation if you want a more
+          off-center target.
+        </div>
+      </div>
+    </details>
+
+    <details class="panel" id="ex3" open>
+      <summary>Quick-Run Configuration for Debugging</summary>
+      <div class="panel-body">
+        <p>
+          The defaults produce 25 datasets &times; 25 trajectories &times; 100 waypoints &times; ray
+          tracing &mdash; many hours of runtime. Edit the four scalars below at the top of
+          <code>fix_angle_trajectory.m</code> to iterate quickly while debugging.
+        </p>
+<pre><code>num_regions      = <span class="matlab-num">1</span>;     <span class="matlab-comment">% production: 5  (yields 5x5 = 25 dataset folders)</span>
+num_trajectories = <span class="matlab-num">3</span>;     <span class="matlab-comment">% production: 25</span>
+maxNodesInPath   = <span class="matlab-num">20</span>;    <span class="matlab-comment">% production: 100  (sigstrength calls per trajectory)</span>
+generateTargetandAngles = <span class="matlab-kw">true</span>;</code></pre>
+        <p>
+          And in <code>generate_fix_angle.m</code>:
+        </p>
+<pre><code>num_datasets     = <span class="matlab-num">1</span>;     <span class="matlab-comment">% production: 25</span>
+num_trajectories = <span class="matlab-num">3</span>;     <span class="matlab-comment">% production: 25</span></code></pre>
+      </div>
+    </details>
+
+    <!-- ======================== ALGORITHM ======================== -->
+    <h2 id="algorithm">Algorithm</h2>
+    <p>
+      The pipeline runs five stages. Stages 1&ndash;4 belong to
+      <code>fix_angle_trajectory.m</code>; Stage&nbsp;5 belongs to
+      <code>generate_fix_angle.m</code>. Click any stage to expand its description and code.
+    </p>
+
+    <div class="arg-group">
+      <details class="arg" id="stage1" open>
+        <summary><strong>Stage 1</strong> - Region grid &amp; setup
+          <span class="arg-type">NW seed, num_regions, dataset folders</span>
+        </summary>
+        <div class="arg-body">
+          <p>
+            Starting from a single NW seed coordinate, lay out an
+            <code>N&times;N</code> matrix of non-overlapping 256&nbsp;m&thinsp;&times;&thinsp;256&nbsp;m
+            regions by stepping south and east in 260&nbsp;m increments. Each region becomes a
+            <code>dataset&lt;env_num&gt;/</code> output folder.
+          </p>
+<pre><code>nw_lat = <span class="matlab-num">32.92556</span>;        <span class="matlab-comment">% NW seed latitude</span>
+nw_lon = <span class="matlab-num">-97.2696</span>;        <span class="matlab-comment">% NW seed longitude</span>
+num_regions      = <span class="matlab-num">5</span>;
+num_trajectories = <span class="matlab-num">25</span>;
+generateTargetandAngles = <span class="matlab-kw">true</span>;
+
+R = <span class="matlab-num">6371</span> * <span class="matlab-num">1000</span>;              <span class="matlab-comment">% Earth radius (m)</span>
+d = <span class="matlab-num">260</span>;                     <span class="matlab-comment">% region spacing (m)</span>
+delta_lat = (d / R) * (<span class="matlab-num">180</span> / pi);
+delta_lon = (d / (R * cosd(nw_lat))) * (<span class="matlab-num">180</span> / pi);
+
+<span class="matlab-comment">% Build NW lat/lon list for the N regions</span>
+nw_lat_list(<span class="matlab-num">1</span>) = nw_lat; nw_lon_list(<span class="matlab-num">1</span>) = nw_lon;
+<span class="matlab-kw">for</span> i = <span class="matlab-num">2</span>:num_regions
+    nw_lat_list(i) = nw_lat_list(i-<span class="matlab-num">1</span>) - delta_lat;
+    nw_lon_list(i) = nw_lon_list(i-<span class="matlab-num">1</span>) + delta_lon;
+<span class="matlab-kw">end</span></code></pre>
+          <figure class="example-figure">
+            <img src="stage1_region_tiling.png" alt="5x5 grid of 256m square region tiles with NW corners marked in red.">
+            <figcaption>
+              Figure: the 5&times;5 region grid laid out by stepping south-east from the seed
+              NW corner. Each blue tile is one 256&nbsp;m&thinsp;&times;&thinsp;256&nbsp;m
+              region; the outer <code>k</code> / <code>l</code> loops in
+              <code>fix_angle_trajectory.m</code> visit them row-major,
+              incrementing <code>env_num</code> for each.
+            </figcaption>
+          </figure>
+        </div>
+      </details>
+
+      <details class="arg" id="stage2" open>
+        <summary><strong>Stage 2</strong> - OSM download &amp; building occupancy
+          <span class="arg-type">readgeotable, isinterior, binaryOccupancyMap</span>
+        </summary>
+        <div class="arg-body">
+          <p>
+            Per region: download buildings via the OSM API (saved to
+            <code>dataset&lt;n&gt;/DatasetMapData.osm</code>), then test every cell of a
+            256&times;256 lat/lon grid for membership inside any building polygon to produce a
+            binary occupancy matrix. Indices outside buildings are recorded in
+            <code>validStarts</code> for later RRT seeding.
+          </p>
+<pre><code><span class="matlab-comment">% Download OSM buildings (slightly larger box than the region)</span>
+osmAPI = <span class="matlab-string">"https://api.openstreetmap.org/api/0.6/map?bbox="</span> + ...
+         num2str(west) + <span class="matlab-string">","</span> + num2str(south) + <span class="matlab-string">","</span> + ...
+         num2str(east) + <span class="matlab-string">","</span> + num2str(north);
+system(<span class="matlab-string">'wget "'</span> + osmAPI + <span class="matlab-string">'" -O '</span> + osmFile);
+
+<span class="matlab-comment">% Build 256x256 occupancy mask</span>
+buildings = readgeotable(osmFile, layer=<span class="matlab-string">"buildings"</span>);
+<span class="matlab-kw">for</span> bldgIndex = <span class="matlab-num">1</span> : height(buildings)
+    bldg = buildings(bldgIndex, <span class="matlab-num">1</span>);
+    points = geopointshape(lat_lon_table(:, <span class="matlab-num">1</span>), lat_lon_table(:, <span class="matlab-num">2</span>));
+    occupiedByBuilding(:,<span class="matlab-num">3</span>) = occupiedByBuilding(:,<span class="matlab-num">3</span>) + isinterior(bldg.Shape, points);
+<span class="matlab-kw">end</span>
+occupancyMatrix = reshape(occupiedByBuilding(:,<span class="matlab-num">3</span>), <span class="matlab-num">256</span>, <span class="matlab-num">256</span>)';</code></pre>
+          <figure class="example-figure">
+            <img src="stage2_osm_buildings.png" alt="Streets basemap with OSM building polygons rendered in orange and a 256m square region outlined in blue.">
+            <figcaption>
+              Figure: 290 OSM building polygons returned by
+              <a href="https://www.mathworks.com/help/map/ref/readgeotable.html" target="_blank" rel="noopener"><code>readgeotable</code></a>,
+              over a streets basemap. The blue square is the 256&nbsp;m&thinsp;&times;&thinsp;256&nbsp;m
+              region; OSM is queried with a slightly larger bounding box so polygons that
+              straddle the border are still retrieved.
+            </figcaption>
+          </figure>
+          <figure class="example-figure">
+            <img src="stage2_occupancy_mask.png" alt="64x64 binary occupancy mask: dark cells are inside building polygons, white cells are free.">
+            <figcaption>
+              Figure: <code>occupancyMatrix</code> visualized as a 64&times;64 binary mask
+              (the production version is 256&times;256). Dark cells fall inside one or more
+              building polygons; white cells are free space and become candidate
+              <code>validStarts</code> for RRT seeding in Stage&nbsp;3.
+            </figcaption>
+          </figure>
+        </div>
+      </details>
+
+      <details class="arg" id="stage3" open>
+        <summary><strong>Stage 3</strong> - RRT path planning &amp; 100-point sampling
+          <span class="arg-type">stateSpaceSE2, plannerRRT, randperm</span>
+        </summary>
+        <div class="arg-body">
+          <p>
+            For each trajectory: pick a random valid start, find a valid end at least
+            100&nbsp;cells away (via the <code>trajectory.isValidEnd</code> helper), run
+            <code>plannerRRT</code> with <code>MaxConnectionDistance = 1</code>, deduplicate the
+            resulting state vector to unique grid cells, and pick 100 of them at random. Cells
+            are then mapped back to lat/lon via the per-region
+            <code>lat_range</code> / <code>lon_range</code>.
+          </p>
+<pre><code>state_space     = stateSpaceSE2;
+state_validator = validatorOccupancyMap(state_space);
+occ_map         = binaryOccupancyMap(occupancyMatrix);
+inflate(occ_map, <span class="matlab-num">2</span>);                <span class="matlab-comment">% obstacle inflation in cells</span>
+state_validator.Map = occ_map;
+state_validator.ValidationDistance = <span class="matlab-num">5</span>;
+state_space.StateBounds = [occ_map.XWorldLimits;
+                            occ_map.YWorldLimits;
+                            [-pi pi]];
+
+planner = plannerRRT(state_space, state_validator, <span class="matlab-string">"MaxIterations"</span>, <span class="matlab-num">2e4</span>);
+planner.MaxConnectionDistance = <span class="matlab-num">1</span>;
+
+[pthObj, ~] = planner.plan(start, goal);
+roundedStates  = round(pthObj.States(:,<span class="matlab-num">1</span>:<span class="matlab-num">2</span>));
+[uniquePoints,~,~] = unique(roundedStates, <span class="matlab-string">'rows'</span>, <span class="matlab-string">'stable'</span>);
+randIndexes    = randperm(size(uniquePoints, <span class="matlab-num">1</span>), <span class="matlab-num">100</span>);
+selectedPoints = uniquePoints(randIndexes, :);</code></pre>
+          <div class="note">
+            <strong>Note.</strong> If <code>unique</code> returns fewer than 100 distinct cells,
+            the iteration is silently retried with a new random start/end. This can loop forever
+            in tight regions; reducing <code>maxNodesInPath</code> avoids the trap.
+          </div>
+          <figure class="example-figure">
+            <img src="stage3_rrt_trajectories.png" alt="Five RRT-planned trajectories drawn in distinct colors over an OSM building backdrop.">
+            <figcaption>
+              Figure: five RRT-planned trajectories from one region, plotted with
+              <code>geoplot</code> over the same OSM buildings backdrop used for the occupancy
+              mask. Circles mark <code>Start</code>, triangles mark <code>End</code>. RRT
+              avoids dark building interiors and produces qualitatively different paths from
+              run to run.
+            </figcaption>
+          </figure>
+        </div>
+      </details>
+
+      <details class="arg" id="stage4" open>
+        <summary><strong>Stage 4</strong> - Target selection &amp; fix-angle bearing
+          <span class="arg-type">geographic bearing via atand</span>
+        </summary>
+        <div class="arg-body">
+          <p>
+            Pick a random valid grid cell <em>not</em> overlapping any of the 100 path
+            waypoints, then compute the bearing from each waypoint to the target. The bearing is
+            laid out by quadrant (the y axis is flipped because grid <em>y</em> grows southward
+            while geographic latitude grows northward).
+          </p>
+<pre><code><span class="matlab-comment">% Find a non-overlapping target</span>
+<span class="matlab-kw">while</span> ~validTargetFound
+    validTargetFound = <span class="matlab-kw">true</span>;
+    possibleTarget = validStarts{randi(width(validStarts))};
+    <span class="matlab-kw">for</span> nodeIndex = <span class="matlab-num">1</span>:<span class="matlab-num">100</span>
+        <span class="matlab-kw">if</span> isequal(possibleTarget, selectedPoints(nodeIndex, :))
+            validTargetFound = <span class="matlab-kw">false</span>; <span class="matlab-kw">break</span>;
+        <span class="matlab-kw">end</span>
+    <span class="matlab-kw">end</span>
+<span class="matlab-kw">end</span>
+
+<span class="matlab-comment">% Per-waypoint bearing in degrees [0, 360)</span>
+<span class="matlab-kw">for</span> node_num = <span class="matlab-num">1</span>:<span class="matlab-num">100</span>
+    deltaX = possibleTarget(<span class="matlab-num">1</span>) - selectedPoints(node_num,<span class="matlab-num">1</span>);
+    deltaY = -(possibleTarget(<span class="matlab-num">2</span>) - selectedPoints(node_num,<span class="matlab-num">2</span>));   <span class="matlab-comment">% flip y for geo</span>
+    <span class="matlab-kw">if</span>     deltaX == <span class="matlab-num">0</span>,                 angle = <span class="matlab-num">90</span>*(deltaY&gt;<span class="matlab-num">0</span>) + <span class="matlab-num">270</span>*(deltaY&lt;<span class="matlab-num">0</span>);
+    <span class="matlab-kw">elseif</span> deltaX &gt; <span class="matlab-num">0</span> &amp;&amp; deltaY &gt; <span class="matlab-num">0</span>,   angle = atand(deltaY/deltaX);
+    <span class="matlab-kw">elseif</span> deltaX &lt; <span class="matlab-num">0</span> &amp;&amp; deltaY &lt; <span class="matlab-num">0</span>,   angle = <span class="matlab-num">180</span> + atand(deltaY/deltaX);
+    <span class="matlab-kw">elseif</span> deltaX &lt; <span class="matlab-num">0</span>,                 angle = <span class="matlab-num">180</span> - abs(atand(deltaY/deltaX));
+    <span class="matlab-kw">else</span>,                              angle = <span class="matlab-num">360</span> - abs(atand(deltaY/deltaX));
+    <span class="matlab-kw">end</span>
+    targetCordsAndAngles(node_num + <span class="matlab-num">2</span>) = angle;
+<span class="matlab-kw">end</span>
+writematrix(targetCordsAndAngles, ...
+    fullfile(directory_name, <span class="matlab-string">"trajectory_"</span> + i + <span class="matlab-string">"_targetAndAngles.csv"</span>));</code></pre>
+          <figure class="example-figure">
+            <img src="stage4_target_arrows.png" alt="Map showing one trajectory in blue with start (green square), end (purple triangle), red target dot, and dashed red lines from sampled waypoints to the target.">
+            <figcaption>
+              Figure: one demo trajectory plotted on a streets basemap, with the random
+              target marked as a red dot and 8 sampled bearings drawn as faint dashed lines.
+              All 30 waypoints' antennas point at the same red target &mdash; the dashed
+              fan visualizes that "fix-angle" geometry. Bearings are computed by the actual
+              quadrant-aware <code>atand</code> formula in <code>fix_angle_trajectory.m</code>.
+            </figcaption>
+          </figure>
+          <figure class="example-figure">
+            <img src="stage4_bearing_polar.png" alt="Polar histogram of antenna bearings concentrated around 198 degrees, the direction toward the target.">
+            <figcaption>
+              Figure: polar histogram of the bearings computed for the trajectory in the
+              previous figure. They cluster narrowly around the direction to the target
+              &mdash; the defining property of <em>fix-angle</em> mode (compare with the
+              uniform random distribution in the <code>generateTrajectoryMaps</code>
+              pipeline).
+            </figcaption>
+          </figure>
+        </div>
+      </details>
+
+      <details class="arg" id="stage5" open>
+        <summary><strong>Stage 5</strong> - Per-waypoint signal strength &amp; export
+          <span class="arg-type">generate_fix_angle.m: txsite, sigstrength, writetable</span>
+        </summary>
+        <div class="arg-body">
+          <p>
+            For every dataset/trajectory pair, load the path and angle CSVs, then build one
+            <code>txsite</code> per waypoint configured with the corresponding bearing (column
+            3+ in the CSV) and a randomly sampled beamwidth in [6&deg;, 20&deg;]. Receivers are
+            the non-building grid points from <code>target_region.csv</code>. Per-waypoint
+            <code>sigstrength</code> calls produce one Excel file each.
+          </p>
+<pre><code>traj   = readmatrix(home_dir + <span class="matlab-string">"/trajectory_"</span> + num2str(i_trajectory) + <span class="matlab-string">".csv"</span>);
+angles = readmatrix(home_dir + <span class="matlab-string">"/trajectory_"</span> + num2str(i_trajectory) + <span class="matlab-string">"_targetAndAngles.csv"</span>);
+beamAngle = randi([<span class="matlab-num">6</span>, <span class="matlab-num">20</span>]);                 <span class="matlab-comment">% random beamwidth per trajectory</span>
+writematrix(beamAngle, fullfile(trajectory_maps_dir, <span class="matlab-string">"beamwidth.csv"</span>));
+
+tx = txsite(<span class="matlab-string">"Name"</span>, <span class="matlab-string">"Tx"</span>+(<span class="matlab-num">1</span>:totalMaps), ...
+            <span class="matlab-string">"Latitude"</span>,  traj(:,<span class="matlab-num">1</span>), ...
+            <span class="matlab-string">"Longitude"</span>, traj(:,<span class="matlab-num">2</span>), ...
+            <span class="matlab-string">"TransmitterFrequency"</span>, <span class="matlab-num">28e9</span>, ...
+            <span class="matlab-string">"TransmitterPower"</span>, <span class="matlab-num">1</span>, <span class="matlab-string">"AntennaHeight"</span>, <span class="matlab-num">2</span>);
+
+<span class="matlab-kw">for</span> tx_num = <span class="matlab-num">1</span>:totalMaps
+    array = phased.URA(<span class="matlab-string">'Size'</span>, [<span class="matlab-num">8</span> <span class="matlab-num">8</span>], <span class="matlab-string">'Lattice'</span>, <span class="matlab-string">'Rectangular'</span>, <span class="matlab-string">'ArrayNormal'</span>, <span class="matlab-string">'x'</span>);
+    array.ElementSpacing = [<span class="matlab-num">0.5</span> <span class="matlab-num">0.5</span>] * physconst(<span class="matlab-string">"lightspeed"</span>) / tx(tx_num).TransmitterFrequency;
+    elem = phased.GaussianAntennaElement;
+    elem.FrequencyRange = [<span class="matlab-num">0</span> tx(tx_num).TransmitterFrequency];
+    elem.Beamwidth      = [beamAngle beamAngle];
+    array.Element       = elem;
+    tx(tx_num).Antenna       = array;
+    tx(tx_num).AntennaAngle  = angles(tx_num + <span class="matlab-num">2</span>);   <span class="matlab-comment">% the precomputed bearing</span>
+<span class="matlab-kw">end</span>
+
+rx = rxsite(<span class="matlab-string">"Latitude"</span>, region(:,<span class="matlab-num">1</span>), <span class="matlab-string">"Longitude"</span>, region(:,<span class="matlab-num">2</span>), ...
+            <span class="matlab-string">"ReceiverSensitivity"</span>, <span class="matlab-num">-100</span>, <span class="matlab-string">"AntennaHeight"</span>, <span class="matlab-num">2</span>);
+pm = propagationModel(<span class="matlab-string">"raytracing"</span>, <span class="matlab-string">"Method"</span>, <span class="matlab-string">"sbr"</span>, ...
+                      <span class="matlab-string">"MaxNumReflections"</span>, <span class="matlab-num">1</span>, <span class="matlab-string">"MaxNumDiffractions"</span>, <span class="matlab-num">0</span>);
+
+<span class="matlab-kw">for</span> tx_num = <span class="matlab-num">1</span>:totalMaps
+    sigStre = sigstrength(rx, tx(tx_num), pm);
+    T = table(region(:,<span class="matlab-num">1</span>), region(:,<span class="matlab-num">2</span>), sigStre', ...
+              <span class="matlab-string">'VariableNames'</span>, {<span class="matlab-string">'Latitude'</span>, <span class="matlab-string">'Longitude'</span>, <span class="matlab-string">'Power'</span>});
+    writetable(T, fullfile(trajectory_maps_dir, string(tx_num) + <span class="matlab-string">'.xlsx'</span>));
+<span class="matlab-kw">end</span></code></pre>
+          <div class="note">
+            <strong>Note.</strong> 100 waypoints &times; per-waypoint
+            <a href="https://www.mathworks.com/help/comm/ref/rxsite.sigstrength.html" target="_blank" rel="noopener"><code>sigstrength</code></a>
+            with one ray-bounce reflection is the dominant runtime cost. Reduce
+            <code>maxNodesInPath</code> in Stage&nbsp;3 or trim <code>num_trajectories</code> /
+            <code>num_datasets</code> when prototyping.
+          </div>
+          <figure class="example-figure">
+            <img src="stage5_antenna_pattern.png" alt="3D directivity pattern of an 8x8 URA with Gaussian element at 28 GHz, showing a strong main lobe.">
+            <figcaption>
+              Figure: 3-D directivity pattern (in dBi) of one waypoint's antenna at
+              28&nbsp;GHz. <code>AntennaAngle</code> rotates this single steerable lobe to
+              point at the target (per the bearing computed in Stage&nbsp;4); the random
+              <code>beamAngle</code> in [6&deg;, 20&deg;] sets the lobe width.
+            </figcaption>
+          </figure>
+          <figure class="example-figure">
+            <img src="stage5_signal_heatmap.png" alt="Map showing real ray-traced signal-strength values for one waypoint, with the transmitter marked as a red star, the target as a magenta dot, and a thin red line connecting them.">
+            <figcaption>
+              Figure: actual ray-traced <code>sigstrength</code> for the middle waypoint of
+              the demo trajectory. The red star is the transmitter; the magenta dot is the
+              target. The fan-shaped power distribution along the connecting line confirms
+              the antenna is correctly aimed at the target by the bearing from Stage&nbsp;4.
+            </figcaption>
+          </figure>
+        </div>
+      </details>
+    </div>
+
+    <!-- ======================== INPUT FILES ======================== -->
+    <h2 id="input-files">Input Files</h2>
+    <div class="arg-group">
+      <details class="arg" open>
+        <summary><code>fix_angle_trajectory.m</code> &amp; <code>generate_fix_angle.m</code>
+          <span class="arg-type">scripts, edit-in-place parameters</span>
+        </summary>
+        <div class="arg-body">
+          The two main scripts. Edit the constants at the top
+          (<code>nw_lat</code>, <code>nw_lon</code>, <code>num_regions</code>,
+          <code>num_trajectories</code>, <code>generateTargetandAngles</code>) before running.
+          There are no command-line arguments.
+        </div>
+      </details>
+      <details class="arg" open>
+        <summary><code>../generateTrajectoryMaps/trajectory.m</code>
+          <span class="arg-type">required class, on MATLAB path</span>
+        </summary>
+        <div class="arg-body">
+          The <code>trajectory</code> class (<code>Start</code>, <code>End</code>,
+          <code>Geopoints</code>, <code>isValidEnd</code>, <code>getPath</code>) used to
+          represent each RRT path. Make sure
+          <code>../generateTrajectoryMaps/</code> is on the MATLAB path.
+        </div>
+      </details>
+      <details class="arg" open>
+        <summary>Internet access &mdash; OSM API
+          <span class="arg-type">required per region</span>
+        </summary>
+        <div class="arg-body">
+          One HTTPS call per region to
+          <a href="https://api.openstreetmap.org" target="_blank" rel="noopener"><code>api.openstreetmap.org</code></a>
+          via <code>wget</code> on the system PATH. Replace with <code>curl</code> if
+          <code>wget</code> is unavailable.
+        </div>
+      </details>
+    </div>
+
+    <!-- ======================== OUTPUT FILES ======================== -->
+    <h2 id="output-files">Output Files</h2>
+    <p>Per region, written to <code>dataset&lt;env_num&gt;/</code>:</p>
+    <ul class="compact">
+      <li><code>DatasetMapData.osm</code> &mdash; cached OSM building extract.</li>
+      <li><code>target_region.csv</code> &mdash; <code>(256&sup2;)&times;3</code> grid:
+        latitude, longitude, building-occupancy flag (0 = free, &gt;0 = inside building).</li>
+      <li><code>trajectory_&lt;i&gt;.csv</code> for <em>i</em>&nbsp;=&nbsp;1...<code>num_trajectories</code> &mdash;
+        100 waypoint <code>(lat, lon)</code> pairs.</li>
+      <li><code>trajectory_&lt;i&gt;_targetAndAngles.csv</code> &mdash; 102 columns: target
+        latitude, target longitude, then 100 antenna bearings (degrees, [0, 360)).</li>
+    </ul>
+    <p>Per trajectory, written by Stage&nbsp;5 to
+       <code>dataset&lt;n&gt;/SignalMapData/trajectory_maps_&lt;i&gt;/</code>:</p>
+    <ul class="compact">
+      <li><code>beamwidth.csv</code> &mdash; one integer in [6, 20].</li>
+      <li><code>1.xlsx ... 100.xlsx</code> &mdash; per-waypoint receiver-power tables
+        (Latitude, Longitude, Power in dBm).</li>
+    </ul>
+
+    <!-- ======================== DEPENDENCIES ======================== -->
+    <h2 id="dependencies">Dependencies</h2>
+    <ul class="compact">
+      <li>MATLAB R2023b or later</li>
+      <li>Antenna Toolbox &mdash;
+        <a href="https://www.mathworks.com/help/comm/ref/txsite.html" target="_blank" rel="noopener"><code>txsite</code></a>,
+        <a href="https://www.mathworks.com/help/comm/ref/rxsite.html" target="_blank" rel="noopener"><code>rxsite</code></a>,
+        <a href="https://www.mathworks.com/help/comm/ref/rxsite.sigstrength.html" target="_blank" rel="noopener"><code>sigstrength</code></a>,
+        <a href="https://www.mathworks.com/help/comm/ref/siteviewer.html" target="_blank" rel="noopener"><code>siteviewer</code></a></li>
+      <li>Phased Array System Toolbox &mdash;
+        <a href="https://www.mathworks.com/help/phased/ref/phased.ura-system-object.html" target="_blank" rel="noopener"><code>phased.URA</code></a>,
+        <a href="https://www.mathworks.com/help/phased/ref/phased.gaussianantennaelement-system-object.html" target="_blank" rel="noopener"><code>phased.GaussianAntennaElement</code></a></li>
+      <li>Navigation Toolbox &mdash;
+        <a href="https://www.mathworks.com/help/nav/ref/plannerrrt.html" target="_blank" rel="noopener"><code>plannerRRT</code></a>,
+        <a href="https://www.mathworks.com/help/nav/ref/statespacese2.html" target="_blank" rel="noopener"><code>stateSpaceSE2</code></a>,
+        <a href="https://www.mathworks.com/help/nav/ref/binaryoccupancymap.html" target="_blank" rel="noopener"><code>binaryOccupancyMap</code></a></li>
+      <li>Mapping Toolbox &mdash;
+        <a href="https://www.mathworks.com/help/map/ref/readgeotable.html" target="_blank" rel="noopener"><code>readgeotable</code></a>,
+        <a href="https://www.mathworks.com/help/matlab/ref/polyshape.isinterior.html" target="_blank" rel="noopener"><code>isinterior</code></a></li>
+      <li>Communications Toolbox &mdash;
+        <a href="https://www.mathworks.com/help/comm/ref/propagationmodel.html" target="_blank" rel="noopener"><code>propagationModel</code></a></li>
+      <li><code>wget</code> (or <code>curl</code>) on the system PATH</li>
+      <li>Local helper class: <code>../generateTrajectoryMaps/trajectory.m</code></li>
+    </ul>
+
+    <!-- ======================== TIPS ======================== -->
+    <h2 id="tips">Tips</h2>
+    <div class="tip">
+      <strong>Tip 1.</strong> The bearing math in Stage&nbsp;4 flips the y-axis with
+      <code>deltaY = -(target_y - waypoint_y)</code>. This is because the occupancy grid's
+      y-coordinate grows southward while latitude grows northward. Forgetting the flip causes
+      every antenna to point at the mirrored target.
+    </div>
+    <div class="tip">
+      <strong>Tip 2.</strong> The default
+      <code>diagonalDistance = 364.3</code> on line&nbsp;84 hard-codes a
+      256&nbsp;m&thinsp;&times;&thinsp;256&nbsp;m diagonal &mdash; if you change <code>d</code>
+      you must update this too (or restore the haversine formula above it).
+    </div>
+    <div class="tip">
+      <strong>Tip 3.</strong> Stage&nbsp;3 will silently retry forever if RRT cannot find paths
+      with at least 100 unique grid cells (very narrow streets, dense buildings). Lower
+      <code>maxNodesInPath</code> or pick a less dense seed region in that case.
+    </div>
+    <div class="tip">
+      <strong>Tip 4.</strong> If you only need the trajectories (not signal maps), skip
+      Stage&nbsp;5 by not running <code>generate_fix_angle.m</code> &mdash; the trajectory and
+      target/angle CSVs are fully self-contained outputs of Stage&nbsp;4.
+    </div>
+
+    <!-- ======================== SEE ALSO ======================== -->
+    <h2 id="see-also">See Also</h2>
+    <h3>Functions</h3>
+    <div class="see-also">
+      <a href="https://www.mathworks.com/help/comm/ref/txsite.html" target="_blank" rel="noopener"><code>txsite</code></a>
+      <a href="https://www.mathworks.com/help/comm/ref/rxsite.html" target="_blank" rel="noopener"><code>rxsite</code></a>
+      <a href="https://www.mathworks.com/help/comm/ref/rxsite.sigstrength.html" target="_blank" rel="noopener"><code>sigstrength</code></a>
+      <a href="https://www.mathworks.com/help/comm/ref/propagationmodel.html" target="_blank" rel="noopener"><code>propagationModel</code></a>
+      <a href="https://www.mathworks.com/help/comm/ref/siteviewer.html" target="_blank" rel="noopener"><code>siteviewer</code></a>
+      <a href="https://www.mathworks.com/help/phased/ref/phased.ura-system-object.html" target="_blank" rel="noopener"><code>phased.URA</code></a>
+      <a href="https://www.mathworks.com/help/phased/ref/phased.gaussianantennaelement-system-object.html" target="_blank" rel="noopener"><code>phased.GaussianAntennaElement</code></a>
+      <a href="https://www.mathworks.com/help/nav/ref/plannerrrt.html" target="_blank" rel="noopener"><code>plannerRRT</code></a>
+      <a href="https://www.mathworks.com/help/nav/ref/binaryoccupancymap.html" target="_blank" rel="noopener"><code>binaryOccupancyMap</code></a>
+      <a href="https://www.mathworks.com/help/map/ref/readgeotable.html" target="_blank" rel="noopener"><code>readgeotable</code></a>
+      <a href="https://www.mathworks.com/help/matlab/ref/polyshape.isinterior.html" target="_blank" rel="noopener"><code>isinterior</code></a>
+    </div>
+
+    <h3>Related Scripts in this Repository</h3>
+    <ul class="compact">
+      <li><code>../generateTrajectoryMaps/trajectory.m</code> &mdash; the trajectory class used in Stage 3</li>
+      <li><code>../generateTrajectoryMaps/test1.m</code> &mdash; random-angle counterpart of <code>fix_angle_trajectory.m</code></li>
+      <li><code>../generateTrajectoryMaps/trajectorySignalStrengthScript.m</code> &mdash; random-angle counterpart of <code>generate_fix_angle.m</code></li>
+      <li><code>../static transimiter simulation/static_trans.m</code> &mdash; static (non-trajectory) signal-map generator</li>
+      <li><code>../app.m</code> (Synthetic Trajectory Generator tab) &mdash; interactive GUI for the same workflow</li>
+    </ul>
+
+  </main>
+</div>
+
+</body>
+</html>

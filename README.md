@@ -47,6 +47,38 @@ app
 ```
 This launches the main GUI with all integrated features: coverage visualization, site management, trajectory generation, mobility analysis, antenna pattern design, and dataset generation.
 
+## Documentation
+
+Each script-based example has a self-contained reference page (MathWorks-style) with runnable
+samples, 5 algorithm stages, and real MATLAB-generated figures. Click to open in a browser:
+
+| Example | Pipeline | Direct preview |
+|---|---|---|
+| `static_trans` | Static-transmitter signal-map (1 region, N transmitters) | [📖 view](https://htmlpreview.github.io/?https://github.com/Kerwinxxp/RF-simulator/blob/main/static%20transimiter%20simulation/static_trans_doc.html) |
+| `fix_angle_trajectory` | RRT trajectories with target-tracking antennas | [📖 view](https://htmlpreview.github.io/?https://github.com/Kerwinxxp/RF-simulator/blob/main/fix%20angle%20simulation/fix_angle_trajectory_doc.html) |
+| `generateTrajectoryMaps` | RRT trajectories with random-angle antennas + PNG visualization | [📖 view](https://htmlpreview.github.io/?https://github.com/Kerwinxxp/RF-simulator/blob/main/generateTrajectoryMaps/generateTrajectoryMaps_doc.html) |
+
+> The "view" links use [htmlpreview.github.io](https://htmlpreview.github.io/) so the HTML pages
+> render directly in your browser without cloning. For a cleaner URL you can also enable
+> GitHub Pages for this repo and the same files become available at
+> `https://kerwinxxp.github.io/RF-simulator/<folder>/<file>.html`.
+
+Each documentation page contains:
+- **Syntax / Description** — MathWorks-style reference header
+- **Examples** — 3 runnable code samples with simplified parameters
+- **Algorithm** — 5 collapsible stages, each with code excerpts and figures
+- **Input / Output Files** — what the script reads and writes
+- **Dependencies / Tips / See Also** — toolbox links and gotchas
+
+Real figures come from the demo scripts `*_demo.m` (one per folder), which run the actual
+pipeline with reduced parameters. Re-run them anytime to refresh the figures:
+
+```matlab
+cd 'static transimiter simulation';   static_trans_demo;            cd ..
+cd 'fix angle simulation';            fix_angle_demo;                cd ..
+cd 'generateTrajectoryMaps';          generateTrajectoryMaps_demo;   cd ..
+```
+
 ### Additional script-based examples
 The repository also includes standalone script flows for specific tasks.
 

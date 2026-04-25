@@ -1386,11 +1386,26 @@ classdef app < matlab.apps.AppBase
             siteNames = 1:num_points;
 
             ntr = str2double(app.NumberofTransmitterinaRegionDropDown.Value);
+
+            % Progress dialog with cancel support
+            dlg = StyledProgressDlg(app.UIFigure, ...
+                'Title', 'Saving Dataset', ...
+                'Message', 'Preparing...', ...
+                'Cancelable', 'on', ...
+                'Value', 0);
+            cleanupDlg = onCleanup(@() delete(dlg)); %#ok<NASGU>
+            cancelled = false;
+
             if ntr == 1
 
                 index_table = table(app.siteN', app.randLatitudes', app.randLongitudes', 'VariableNames', {'SiteName', 'Latitude', 'Longitude'});
 
                 for i = 1 : num_points
+                    if dlg.CancelRequested
+                        cancelled = true; break;
+                    end
+                    dlg.Value = (i-1) / (2*num_points);
+                    dlg.Message = sprintf('Generating heatmap %d/%d', i, num_points);
                     transLat  = app.randLatitudes(i);
                     transLon = app.randLongitudes(i);
 
@@ -1412,6 +1427,13 @@ classdef app < matlab.apps.AppBase
                     % Initialize the received power matrix
                     receivedPowerMatrix = zeros(totalCentroids, 1);
                     for j = 1 : totalCentroids
+                        if dlg.CancelRequested
+                            cancelled = true; break;
+                        end
+                        if mod(j, 50) == 0 || j == 1
+                            dlg.Message = sprintf('Heatmap %d/%d  (point %d/%d)', i, num_points, j, totalCentroids);
+                            dlg.Value = ((i-1)*totalCentroids + j) / (num_points*totalCentroids + num_points);
+                        end
                         rx = rxsite('Latitude',app.centroidLat(j),'Longitude',app.centroidLon(j));
 
                         pm = propagationModel("raytracing", "Method", "sbr", "BuildingsMaterial","perfect-reflector");
@@ -1420,6 +1442,7 @@ classdef app < matlab.apps.AppBase
                         % Store the received power in the matrix
                         receivedPowerMatrix(j) = ss;
                     end
+                    if cancelled, break; end
 
                     % Reshape the received power values back into the n-by-m matrix
                     receivedPowerMatrix = reshape(receivedPowerMatrix, n, m);
@@ -1441,6 +1464,11 @@ classdef app < matlab.apps.AppBase
                 end
 
                 for i = 1 : num_points
+                    if dlg.CancelRequested
+                        cancelled = true; break;
+                    end
+                    dlg.Value = (num_points + i - 1) / (2*num_points);
+                    dlg.Message = sprintf('Saving coverage CSV %d/%d', i, num_points);
                     tx = txsite("Name",string(i),"Latitude",app.randLatitudes(i),"Longitude",app.randLongitudes(i));
                     yagiAnt = design(yagiUda, transmitterFreq);
 
@@ -1458,10 +1486,14 @@ classdef app < matlab.apps.AppBase
                     writetable(pd_table, filepath);
                 end
 
-                filename = strcat("index_table",".csv");
-                filepath = strcat(pathAddress, filename);
-                writetable(index_table, filepath);
-                app.StatusEditField.Value = "Saving Successful";
+                if ~cancelled
+                    filename = strcat("index_table",".csv");
+                    filepath = strcat(pathAddress, filename);
+                    writetable(index_table, filepath);
+                    app.StatusEditField.Value = "Saving Successful";
+                else
+                    app.StatusEditField.Value = "Saving Cancelled";
+                end
 
             elseif ntr == 2
                 site1TransLat = [];
@@ -1469,8 +1501,17 @@ classdef app < matlab.apps.AppBase
                 site1TransLon = [];
                 site2TransLon = [];
                 sites2Trans = [];
-                for k = 1 : length(app.randLatitudes)
-                    for j = 1 : length(app.randLatitudes)
+                L = length(app.randLatitudes);
+                totalSteps2 = 2 * L * L;
+                for k = 1 : L
+                    if cancelled, break; end
+                    for j = 1 : L
+                        if dlg.CancelRequested
+                            cancelled = true; break;
+                        end
+                        stepIdx = (k-1)*L + j;
+                        dlg.Value = (stepIdx - 1) / totalSteps2;
+                        dlg.Message = sprintf('Generating heatmap %d/%d (pair %d,%d)', stepIdx, L*L, k, j);
                         siteNum1 = k;
                         siteNum2 = j;
                         site1TransLat = [site1TransLat app.randLatitudes(k)];
@@ -1487,7 +1528,14 @@ classdef app < matlab.apps.AppBase
                         transmitterFreq = fq1;
                         transmitterPow = app.TransmitterPowerdBmEditField.Value;
 
-                        for i = 1:numel(app.centroidLat)
+                        numCentroids2 = numel(app.centroidLat);
+                        for i = 1:numCentroids2
+                            if dlg.CancelRequested
+                                cancelled = true; break;
+                            end
+                            if mod(i, 50) == 0 || i == 1
+                                dlg.Message = sprintf('Heatmap %d/%d  (point %d/%d, pair %d,%d)', stepIdx, L*L, i, numCentroids2, k, j);
+                            end
                             tx = txsite('Latitude',[app.randLatitudes(siteNum1) app.randLatitudes(siteNum2)],'Longitude',[app.randLongitudes(siteNum1) app.randLongitudes(siteNum2)], ...
                                 'TransmitterFrequency', transmitterFreq, "TransmitterPower", transmitterPow);
 
@@ -1510,6 +1558,7 @@ classdef app < matlab.apps.AppBase
                             % Store the received power in the matrix
                             receivedPowerMatrix(i) = combinedSignalStrength;
                         end
+                        if cancelled, break; end
 
                         % Reshape the received power values back into the n-by-m matrix
                         receivedPowerMatrix = reshape(receivedPowerMatrix, n, m);
@@ -1533,8 +1582,15 @@ classdef app < matlab.apps.AppBase
 
                 index_table = table(sites2Trans', site1TransLat', site1TransLon', site2TransLat', site2TransLon', 'VariableNames', {'SiteName', 'Transmitter Site 1 Latitude', 'Transmitter Site 1 Longitude', 'Transmitter Site 2 Latitude', 'Transmitter Site 2 Longitude'});
 
-                for k = 1 : length(app.randLatitudes)
-                    for j = 1 : length(app.randLatitudes)
+                for k = 1 : L
+                    if cancelled, break; end
+                    for j = 1 : L
+                        if dlg.CancelRequested
+                            cancelled = true; break;
+                        end
+                        stepIdx = L*L + (k-1)*L + j;
+                        dlg.Value = (stepIdx - 1) / totalSteps2;
+                        dlg.Message = sprintf('Saving coverage CSV %d/%d (pair %d,%d)', (k-1)*L+j, L*L, k, j);
                         siteNum1 = k;
                         siteNum2 = j;
 
@@ -1563,10 +1619,14 @@ classdef app < matlab.apps.AppBase
                         writetable(pd_table, filepath);
                     end
                 end
-                filename = strcat("index_table",".csv");
-                filepath = strcat(pathAddress, filename);
-                writetable(index_table, filepath);
-                app.StatusEditField.Value = "Saving Successful";
+                if ~cancelled
+                    filename = strcat("index_table",".csv");
+                    filepath = strcat(pathAddress, filename);
+                    writetable(index_table, filepath);
+                    app.StatusEditField.Value = "Saving Successful";
+                else
+                    app.StatusEditField.Value = "Saving Cancelled";
+                end
             end
         end
 
@@ -2802,7 +2862,22 @@ classdef app < matlab.apps.AppBase
             nw_lat = nw_lat_list(i);
             nw_lon = nw_lon_list(j);
 
-            for i = 1:numel(app.Trajectories)
+            % Progress dialog with cancel support
+            numTraj = numel(app.Trajectories);
+            dlg = StyledProgressDlg(app.UIFigure, ...
+                'Title', 'Simulating All Trajectories', ...
+                'Message', 'Preparing...', ...
+                'Cancelable', 'on', ...
+                'Value', 0);
+            cleanupDlg = onCleanup(@() delete(dlg)); %#ok<NASGU>
+            cancelled = false;
+
+            for i = 1:numTraj
+                if dlg.CancelRequested
+                    cancelled = true; break;
+                end
+                dlg.Value = (i - 1) / numTraj;
+                dlg.Message = sprintf('Trajectory %d/%d: setting up...', i, numTraj);
                 app.ActiveTrajectory = app.Trajectories{i};
 
                 env_num = env_num + 1;
@@ -2884,6 +2959,7 @@ classdef app < matlab.apps.AppBase
 
                 %% Building and Non Building Coordinates Computation
                 pm = propagationModel("raytracing","Method","image", "MaxNumReflections",0);
+                dlg.Message = sprintf('Trajectory %d/%d: ray tracing buildings...', i, numTraj);
                 startTime = datetime('now');
                 [pd, isWithinBldg1, datalats1, datalons1] = coverage_test(tx(1),pm,'MaxRange',diagonalDistance, 'Resolution', 1);
                 endTime = datetime('now');
@@ -2902,9 +2978,22 @@ classdef app < matlab.apps.AppBase
                 rx = rxsite(Latitude=receiver_lats, ...
                     Longitude=receiver_lons);
                 tic
+                numRx = numel(rx);
                 for tx_num = 1 : width(tx)
                     startTime = datetime('now');
-                    sigStre = sigstrength(rx, tx(tx_num), pm);
+                    sigStre = zeros(1, numRx);
+                    for rxIdx = 1:numRx
+                        if dlg.CancelRequested
+                            cancelled = true; break;
+                        end
+                        if mod(rxIdx, 50) == 0 || rxIdx == 1
+                            dlg.Message = sprintf('Trajectory %d/%d: signal strength %d/%d (tx %d/%d)', ...
+                                i, numTraj, rxIdx, numRx, tx_num, width(tx));
+                            dlg.Value = (i - 1)/numTraj + (rxIdx/numRx)/numTraj;
+                        end
+                        sigStre(rxIdx) = sigstrength(rx(rxIdx), tx(tx_num), pm);
+                    end
+                    if cancelled, break; end
 
                     T = table(receiver_lats, receiver_lons, sigStre');
                     T.Properties.VariableNames = {'Latitude', 'Longitudes', 'Power'};
@@ -2914,6 +3003,7 @@ classdef app < matlab.apps.AppBase
                     elapsedTime = seconds(endTime - startTime);
                     disp(elapsedTime)
                 end
+                if cancelled, break; end
                 toc
 
                 endTime_env = datetime('now');
